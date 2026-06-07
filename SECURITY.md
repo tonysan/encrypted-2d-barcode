@@ -72,6 +72,10 @@ The project should maintain an inventory for each runtime dependency:
 
 No runtime dependency should make network calls during create or recover flows.
 
+Approved v1 runtime dependencies:
+
+- `qrcode-generator@1.4.4`: MIT-licensed QR Code matrix generation, pinned in `package-lock.json`, copied locally into `static/vendor/` during build.
+
 ## Reporting Security Issues
 
 Please do not open public issues for suspected vulnerabilities involving secret exposure, cryptographic behavior, or supply-chain compromise.

@@ -135,11 +135,32 @@ async function testRemoteHeaderRejection() {
   );
 }
 
-async function testQrMatrix() {
-  const matrix = app.makeQrMatrix(app.encodePlainPayload("qr smoke test"), "M");
-  assert.equal(Number.isInteger(matrix.version), true);
-  assert.equal(matrix.size, matrix.modules.length);
-  assert.equal(matrix.modules.every((row) => row.length === matrix.size), true);
+async function testQrLibraryMatrix() {
+  const qrContent = app.buildQrContent(app.encodePlainPayload("qr smoke test"), {
+    href: "https://encrypt.tonysan.fun/"
+  });
+  const qr = app.createQrCode(qrContent);
+  const moduleCount = qr.getModuleCount();
+  assert.equal(Number.isInteger(moduleCount), true);
+  assert.equal(moduleCount >= 21, true);
+  assert.equal(typeof qr.isDark(0, 0), "boolean");
+}
+
+async function testPassphraseQrRenderPlan() {
+  const compact = await app.encryptPassphraseJwe(
+    "secret string",
+    "this is a long passphrase",
+    { p2c: 1500 }
+  );
+  const payload = app.ENCRYPTED_PREFIX + compact;
+  const qrContent = app.buildQrContent(payload, {
+    href: "https://encrypt.tonysan.fun/"
+  });
+  const plan = app.getQrRenderPlan(qrContent);
+  assert.equal(plan.errorCorrectionLevel, "M");
+  assert.equal(plan.marginModules, 4);
+  assert.equal(plan.modulePixels >= 10, true);
+  assert.equal(plan.pixelSize, (plan.moduleCount + plan.marginModules * 2) * plan.modulePixels);
 }
 
 async function testPassphrasePolicy() {
@@ -164,7 +185,8 @@ async function run() {
     testCorruptedPayload,
     testUnsupportedHeaderRejection,
     testRemoteHeaderRejection,
-    testQrMatrix,
+    testQrLibraryMatrix,
+    testPassphraseQrRenderPlan,
     testPassphrasePolicy
   ];
   for (const test of tests) {

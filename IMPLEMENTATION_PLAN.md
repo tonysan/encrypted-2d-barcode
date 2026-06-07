@@ -383,7 +383,7 @@ Goal: replace manual payload copy with a printable/scannable code.
 
 Tasks:
 
-- Add local QR-compatible 2D barcode generation.
+- Add same-origin QR-compatible 2D barcode generation with a pinned, locally bundled npm dependency.
 - Generate a barcode for plain and encrypted payloads.
 - Add download/print support.
 - Show human-readable payload text as fallback.

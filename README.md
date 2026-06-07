@@ -124,7 +124,7 @@ Build command: npm run build
 Build output directory: static
 ```
 
-The build script validates tests and required static deployment files. It does not bundle or fetch runtime dependencies.
+The build script validates tests and required static deployment files, then copies the pinned `qrcode-generator` browser file into `static/vendor/` for same-origin deployment.
 
 When the app is opened from an HTTP(S) domain, generated QR codes contain the current page URL plus the payload in the fragment:
 
@@ -156,6 +156,7 @@ Planned rules:
 - Prefer browser Web Crypto over third-party crypto implementations.
 - Implement only the strict JWE profile needed by the app.
 - Avoid broad JOSE dependencies in v1.
+- Use `qrcode-generator@1.4.4` for QR standards logic instead of maintaining a custom QR encoder.
 - Pin and inventory dependencies.
 - Vendor or bundle runtime dependencies locally.
 - Use no CDN runtime scripts.

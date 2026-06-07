@@ -310,9 +310,10 @@ button:focus-visible,
 }
 
 #qr-canvas {
-  max-width: 520px;
+  max-width: min(100%, 760px);
   aspect-ratio: 1;
   height: auto;
+  image-rendering: pixelated;
   margin: 14px auto 0;
 }
 
@@ -419,7 +420,7 @@ button:focus-visible,
   }
 
   #qr-canvas {
-    width: 85mm;
-    height: 85mm;
+    width: 110mm;
+    height: 110mm;
   }
 }

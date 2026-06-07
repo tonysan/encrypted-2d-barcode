@@ -1,7 +1,7 @@
 (function initRuntime(root) {
   "use strict";
 
-  const APP_VERSION = "0.1.2-dev";
+  const APP_VERSION = "0.1.3-dev";
   const ENCRYPTED_PREFIX = "ERK1.";
   const PLAIN_PREFIX = "ERP1.";
   const PASSWORD_ALG = "PBES2-HS512+A256KW";
@@ -10,7 +10,9 @@
   const DEFAULT_P2C = 210000;
   const MAX_P2C = 5000000;
   const GCM_TAG_BYTES = 16;
-  const QR_ECL = "M";
+  const QR_ERROR_CORRECTION = "M";
+  const QR_MARGIN_MODULES = 4;
+  const QR_MODULE_PIXELS = 10;
   const COMMON_PASSWORDS = new Set([
     "password",
     "password1",
@@ -405,488 +407,65 @@
     return hash.toString(16).padStart(8, "0").toUpperCase();
   }
 
-  const ECL_DATA = {
-    L: {
-      format: 1,
-      ecc: [-1, 7, 10, 15, 20, 26, 18, 20, 24, 30, 18, 20, 24, 26, 30, 22, 24, 28, 30, 28, 28, 28, 28, 30, 30, 26, 28, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30],
-      blocks: [-1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 4, 4, 4, 4, 4, 6, 6, 6, 6, 7, 8, 8, 9, 9, 10, 12, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 24, 25]
-    },
-    M: {
-      format: 0,
-      ecc: [-1, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26, 30, 22, 22, 24, 24, 28, 28, 26, 26, 26, 26, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28],
-      blocks: [-1, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5, 5, 8, 9, 9, 10, 10, 11, 13, 14, 16, 17, 17, 18, 20, 21, 23, 25, 26, 28, 29, 31, 33, 35, 37, 38, 40, 43, 45, 47, 49]
-    },
-    Q: {
-      format: 3,
-      ecc: [-1, 13, 22, 18, 26, 18, 24, 18, 22, 20, 24, 28, 26, 24, 20, 30, 24, 28, 28, 26, 30, 28, 30, 30, 30, 30, 28, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30],
-      blocks: [-1, 1, 1, 2, 2, 4, 4, 6, 6, 8, 8, 8, 10, 12, 16, 12, 17, 16, 18, 21, 20, 23, 23, 25, 27, 29, 34, 34, 35, 38, 40, 43, 45, 48, 51, 53, 56, 59, 62, 65, 68]
-    },
-    H: {
-      format: 2,
-      ecc: [-1, 17, 28, 22, 16, 22, 28, 26, 26, 24, 28, 24, 28, 22, 24, 24, 30, 28, 28, 26, 28, 30, 24, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30],
-      blocks: [-1, 1, 1, 2, 4, 4, 4, 5, 6, 8, 8, 11, 11, 16, 16, 18, 16, 19, 21, 25, 25, 25, 34, 30, 32, 35, 37, 40, 42, 45, 48, 51, 54, 57, 60, 63, 66, 70, 74, 77, 81]
+  function getQrFactory() {
+    if (typeof root.qrcode === "function") {
+      return root.qrcode;
     }
-  };
-
-  function getNumRawDataModules(version) {
-    let result = (16 * version + 128) * version + 64;
-    if (version >= 2) {
-      const numAlign = Math.floor(version / 7) + 2;
-      result -= (25 * numAlign - 10) * numAlign - 55;
-      if (version >= 7) {
-        result -= 36;
-      }
+    if (typeof require === "function") {
+      return require("qrcode-generator");
     }
-    return result;
+    throw new Error("QR code library is not loaded.");
   }
 
-  function getNumDataCodewords(version, ecl) {
-    const data = ECL_DATA[ecl];
-    return Math.floor(getNumRawDataModules(version) / 8) - data.ecc[version] * data.blocks[version];
+  function createQrCode(text, errorCorrectionLevel) {
+    const qr = getQrFactory()(0, errorCorrectionLevel || QR_ERROR_CORRECTION);
+    qr.addData(text, "Byte");
+    qr.make();
+    return qr;
   }
 
-  class BitBuffer {
-    constructor() {
-      this.bits = [];
-    }
-
-    appendBits(value, length) {
-      if (length < 0 || length > 31 || value >>> length !== 0) {
-        throw new Error("Invalid bit buffer append.");
-      }
-      for (let i = length - 1; i >= 0; i -= 1) {
-        this.bits.push((value >>> i) & 1);
-      }
-    }
-
-    get length() {
-      return this.bits.length;
-    }
-
-    toBytes() {
-      const bytes = new Uint8Array(Math.ceil(this.bits.length / 8));
-      for (let index = 0; index < this.bits.length; index += 1) {
-        bytes[index >>> 3] |= this.bits[index] << (7 - (index & 7));
-      }
-      return bytes;
-    }
-  }
-
-  function chooseQrVersion(dataLength, ecl) {
-    for (let version = 1; version <= 40; version += 1) {
-      const countBits = version <= 9 ? 8 : 16;
-      const neededBits = 4 + countBits + dataLength * 8;
-      if (neededBits <= getNumDataCodewords(version, ecl) * 8) {
-        return version;
-      }
-    }
-    throw new Error("Payload is too large for one QR code. Multi-chunk codes are deferred.");
-  }
-
-  function makeDataCodewords(dataBytes, version, ecl) {
-    const capacity = getNumDataCodewords(version, ecl);
-    const buffer = new BitBuffer();
-    buffer.appendBits(0x4, 4);
-    buffer.appendBits(dataBytes.length, version <= 9 ? 8 : 16);
-    for (const byte of dataBytes) {
-      buffer.appendBits(byte, 8);
-    }
-    const capacityBits = capacity * 8;
-    buffer.appendBits(0, Math.min(4, capacityBits - buffer.length));
-    while (buffer.length % 8 !== 0) {
-      buffer.appendBits(0, 1);
-    }
-    const bytes = Array.from(buffer.toBytes());
-    for (let pad = 0xec; bytes.length < capacity; pad ^= 0xec ^ 0x11) {
-      bytes.push(pad);
-    }
-    return bytes;
-  }
-
-  function gfMultiply(x, y) {
-    let result = 0;
-    for (let index = 0; index < 8; index += 1) {
-      result ^= (y & 1) ? x : 0;
-      const carry = x & 0x80;
-      x = (x << 1) & 0xff;
-      if (carry) {
-        x ^= 0x1d;
-      }
-      y >>>= 1;
-    }
-    return result;
-  }
-
-  function reedSolomonDivisor(degree) {
-    const result = new Uint8Array(degree);
-    result[degree - 1] = 1;
-    let root = 1;
-    for (let i = 0; i < degree; i += 1) {
-      for (let j = 0; j < degree; j += 1) {
-        result[j] = gfMultiply(result[j], root);
-        if (j + 1 < degree) {
-          result[j] ^= result[j + 1];
-        }
-      }
-      root = gfMultiply(root, 2);
-    }
-    return result;
-  }
-
-  function reedSolomonRemainder(data, divisor) {
-    const result = new Uint8Array(divisor.length);
-    for (const byte of data) {
-      const factor = byte ^ result[0];
-      result.copyWithin(0, 1);
-      result[result.length - 1] = 0;
-      for (let index = 0; index < result.length; index += 1) {
-        result[index] ^= gfMultiply(divisor[index], factor);
-      }
-    }
-    return Array.from(result);
-  }
-
-  function addEccAndInterleave(dataCodewords, version, ecl) {
-    const eclInfo = ECL_DATA[ecl];
-    const numBlocks = eclInfo.blocks[version];
-    const blockEccLen = eclInfo.ecc[version];
-    const rawCodewords = Math.floor(getNumRawDataModules(version) / 8);
-    const numShortBlocks = numBlocks - (rawCodewords % numBlocks);
-    const shortBlockLen = Math.floor(rawCodewords / numBlocks);
-    const divisor = reedSolomonDivisor(blockEccLen);
-    const blocks = [];
-    let offset = 0;
-    for (let blockIndex = 0; blockIndex < numBlocks; blockIndex += 1) {
-      const datLen = shortBlockLen - blockEccLen + (blockIndex < numShortBlocks ? 0 : 1);
-      const dat = dataCodewords.slice(offset, offset + datLen);
-      offset += datLen;
-      const ecc = reedSolomonRemainder(dat, divisor);
-      if (blockIndex < numShortBlocks) {
-        dat.push(0);
-      }
-      blocks.push(dat.concat(ecc));
-    }
-    const result = [];
-    for (let byteIndex = 0; byteIndex < blocks[0].length; byteIndex += 1) {
-      for (let blockIndex = 0; blockIndex < blocks.length; blockIndex += 1) {
-        if (byteIndex !== shortBlockLen - blockEccLen || blockIndex >= numShortBlocks) {
-          result.push(blocks[blockIndex][byteIndex]);
-        }
-      }
-    }
-    return result;
-  }
-
-  function getAlignmentPatternPositions(version) {
-    if (version === 1) {
-      return [];
-    }
-    const size = version * 4 + 17;
-    const numAlign = Math.floor(version / 7) + 2;
-    const step = version === 32 ? 26 : Math.ceil((version * 4 + 4) / (numAlign * 2 - 2)) * 2;
-    const result = [6];
-    for (let position = size - 7; result.length < numAlign; position -= step) {
-      result.splice(1, 0, position);
-    }
-    return result;
-  }
-
-  function makeMatrix(size) {
-    const modules = [];
-    const functions = [];
-    for (let y = 0; y < size; y += 1) {
-      modules.push(new Array(size).fill(false));
-      functions.push(new Array(size).fill(false));
-    }
-    return { modules, functions };
-  }
-
-  function setFunctionModule(state, x, y, dark) {
-    if (x < 0 || y < 0 || y >= state.modules.length || x >= state.modules.length) {
-      return;
-    }
-    state.modules[y][x] = dark;
-    state.functions[y][x] = true;
-  }
-
-  function drawFinderPattern(state, centerX, centerY) {
-    for (let dy = -4; dy <= 4; dy += 1) {
-      for (let dx = -4; dx <= 4; dx += 1) {
-        const x = centerX + dx;
-        const y = centerY + dy;
-        const dist = Math.max(Math.abs(dx), Math.abs(dy));
-        const dark = dist !== 2 && dist !== 4;
-        setFunctionModule(state, x, y, dark);
-      }
-    }
-  }
-
-  function drawAlignmentPattern(state, centerX, centerY) {
-    for (let dy = -2; dy <= 2; dy += 1) {
-      for (let dx = -2; dx <= 2; dx += 1) {
-        const dist = Math.max(Math.abs(dx), Math.abs(dy));
-        setFunctionModule(state, centerX + dx, centerY + dy, dist !== 1);
-      }
-    }
-  }
-
-  function drawFunctionPatterns(state, version) {
-    const size = state.modules.length;
-    drawFinderPattern(state, 3, 3);
-    drawFinderPattern(state, size - 4, 3);
-    drawFinderPattern(state, 3, size - 4);
-    for (let index = 0; index < size; index += 1) {
-      if (!state.functions[index][6]) {
-        setFunctionModule(state, 6, index, index % 2 === 0);
-      }
-      if (!state.functions[6][index]) {
-        setFunctionModule(state, index, 6, index % 2 === 0);
-      }
-    }
-    const positions = getAlignmentPatternPositions(version);
-    for (const y of positions) {
-      for (const x of positions) {
-        if (!state.functions[y][x]) {
-          drawAlignmentPattern(state, x, y);
-        }
-      }
-    }
-    drawFormatBits(state, "M", 0);
-    if (version >= 7) {
-      drawVersionBits(state, version);
-    }
-  }
-
-  function drawVersionBits(state, version) {
-    const size = state.modules.length;
-    let remainder = version;
-    for (let i = 0; i < 12; i += 1) {
-      remainder = (remainder << 1) ^ (((remainder >>> 11) & 1) * 0x1f25);
-    }
-    const bits = (version << 12) | remainder;
-    for (let i = 0; i < 18; i += 1) {
-      const bit = ((bits >>> i) & 1) !== 0;
-      const a = size - 11 + (i % 3);
-      const b = Math.floor(i / 3);
-      setFunctionModule(state, a, b, bit);
-      setFunctionModule(state, b, a, bit);
-    }
-  }
-
-  function drawFormatBits(state, ecl, mask) {
-    const size = state.modules.length;
-    const data = (ECL_DATA[ecl].format << 3) | mask;
-    let remainder = data;
-    for (let i = 0; i < 10; i += 1) {
-      remainder = (remainder << 1) ^ (((remainder >>> 9) & 1) * 0x537);
-    }
-    const bits = ((data << 10) | remainder) ^ 0x5412;
-    for (let i = 0; i <= 5; i += 1) {
-      setFunctionModule(state, 8, i, ((bits >>> i) & 1) !== 0);
-    }
-    setFunctionModule(state, 8, 7, ((bits >>> 6) & 1) !== 0);
-    setFunctionModule(state, 8, 8, ((bits >>> 7) & 1) !== 0);
-    setFunctionModule(state, 7, 8, ((bits >>> 8) & 1) !== 0);
-    for (let i = 9; i < 15; i += 1) {
-      setFunctionModule(state, 14 - i, 8, ((bits >>> i) & 1) !== 0);
-    }
-    for (let i = 0; i < 8; i += 1) {
-      setFunctionModule(state, size - 1 - i, 8, ((bits >>> i) & 1) !== 0);
-    }
-    for (let i = 8; i < 15; i += 1) {
-      setFunctionModule(state, 8, size - 15 + i, ((bits >>> i) & 1) !== 0);
-    }
-    setFunctionModule(state, 8, size - 8, true);
-  }
-
-  function drawCodewords(state, data) {
-    const size = state.modules.length;
-    let bitIndex = 0;
-    for (let right = size - 1; right >= 1; right -= 2) {
-      if (right === 6) {
-        right -= 1;
-      }
-      for (let vert = 0; vert < size; vert += 1) {
-        for (let j = 0; j < 2; j += 1) {
-          const x = right - j;
-          const upward = ((right + 1) & 2) === 0;
-          const y = upward ? size - 1 - vert : vert;
-          if (!state.functions[y][x] && bitIndex < data.length * 8) {
-            state.modules[y][x] = ((data[bitIndex >>> 3] >>> (7 - (bitIndex & 7))) & 1) !== 0;
-            bitIndex += 1;
-          }
-        }
-      }
-    }
-  }
-
-  function maskBit(mask, x, y) {
-    switch (mask) {
-      case 0: return (x + y) % 2 === 0;
-      case 1: return y % 2 === 0;
-      case 2: return x % 3 === 0;
-      case 3: return (x + y) % 3 === 0;
-      case 4: return (Math.floor(y / 2) + Math.floor(x / 3)) % 2 === 0;
-      case 5: return ((x * y) % 2) + ((x * y) % 3) === 0;
-      case 6: return (((x * y) % 2) + ((x * y) % 3)) % 2 === 0;
-      case 7: return (((x + y) % 2) + ((x * y) % 3)) % 2 === 0;
-      default: throw new Error("Invalid QR mask.");
-    }
-  }
-
-  function cloneQrState(state) {
+  function getQrRenderPlan(text) {
+    const qr = createQrCode(text, QR_ERROR_CORRECTION);
+    const moduleCount = qr.getModuleCount();
     return {
-      modules: state.modules.map((row) => row.slice()),
-      functions: state.functions.map((row) => row.slice())
-    };
-  }
-
-  function applyMask(state, mask) {
-    const size = state.modules.length;
-    for (let y = 0; y < size; y += 1) {
-      for (let x = 0; x < size; x += 1) {
-        if (!state.functions[y][x] && maskBit(mask, x, y)) {
-          state.modules[y][x] = !state.modules[y][x];
-        }
-      }
-    }
-  }
-
-  function getPenaltyScore(modules) {
-    const size = modules.length;
-    let result = 0;
-    for (let y = 0; y < size; y += 1) {
-      let color = modules[y][0];
-      let run = 1;
-      for (let x = 1; x < size; x += 1) {
-        if (modules[y][x] === color) {
-          run += 1;
-        } else {
-          if (run >= 5) {
-            result += run - 2;
-          }
-          color = modules[y][x];
-          run = 1;
-        }
-      }
-      if (run >= 5) {
-        result += run - 2;
-      }
-    }
-    for (let x = 0; x < size; x += 1) {
-      let color = modules[0][x];
-      let run = 1;
-      for (let y = 1; y < size; y += 1) {
-        if (modules[y][x] === color) {
-          run += 1;
-        } else {
-          if (run >= 5) {
-            result += run - 2;
-          }
-          color = modules[y][x];
-          run = 1;
-        }
-      }
-      if (run >= 5) {
-        result += run - 2;
-      }
-    }
-    for (let y = 0; y < size - 1; y += 1) {
-      for (let x = 0; x < size - 1; x += 1) {
-        const color = modules[y][x];
-        if (color === modules[y][x + 1] && color === modules[y + 1][x] && color === modules[y + 1][x + 1]) {
-          result += 3;
-        }
-      }
-    }
-    const patternA = [true, false, true, true, true, false, true, false, false, false, false];
-    const patternB = [false, false, false, false, true, false, true, true, true, false, true];
-    function matches(line, index, pattern) {
-      for (let i = 0; i < pattern.length; i += 1) {
-        if (line[index + i] !== pattern[i]) {
-          return false;
-        }
-      }
-      return true;
-    }
-    for (let y = 0; y < size; y += 1) {
-      for (let x = 0; x <= size - 11; x += 1) {
-        if (matches(modules[y], x, patternA) || matches(modules[y], x, patternB)) {
-          result += 40;
-        }
-      }
-    }
-    for (let x = 0; x < size; x += 1) {
-      const column = modules.map((row) => row[x]);
-      for (let y = 0; y <= size - 11; y += 1) {
-        if (matches(column, y, patternA) || matches(column, y, patternB)) {
-          result += 40;
-        }
-      }
-    }
-    let dark = 0;
-    for (const row of modules) {
-      for (const value of row) {
-        if (value) {
-          dark += 1;
-        }
-      }
-    }
-    const percent = (dark * 100) / (size * size);
-    result += Math.floor(Math.abs(percent - 50) / 5) * 10;
-    return result;
-  }
-
-  function makeQrMatrix(text, ecl) {
-    const dataBytes = utf8Encode(text);
-    const level = ecl || QR_ECL;
-    const version = chooseQrVersion(dataBytes.length, level);
-    const dataCodewords = makeDataCodewords(dataBytes, version, level);
-    const allCodewords = addEccAndInterleave(dataCodewords, version, level);
-    const size = version * 4 + 17;
-    const base = makeMatrix(size);
-    drawFunctionPatterns(base, version);
-    drawCodewords(base, allCodewords);
-    let best = null;
-    let bestScore = Infinity;
-    for (let mask = 0; mask < 8; mask += 1) {
-      const candidate = cloneQrState(base);
-      applyMask(candidate, mask);
-      drawFormatBits(candidate, level, mask);
-      const score = getPenaltyScore(candidate.modules);
-      if (score < bestScore) {
-        best = candidate.modules;
-        bestScore = score;
-      }
-    }
-    return {
-      version,
-      size,
-      modules: best
+      qr,
+      errorCorrectionLevel: QR_ERROR_CORRECTION,
+      version: Math.round((moduleCount - 17) / 4),
+      moduleCount,
+      marginModules: QR_MARGIN_MODULES,
+      modulePixels: QR_MODULE_PIXELS,
+      pixelSize: (moduleCount + QR_MARGIN_MODULES * 2) * QR_MODULE_PIXELS
     };
   }
 
   function drawQrToCanvas(canvas, text) {
-    const qr = makeQrMatrix(text, QR_ECL);
-    const quiet = 4;
-    const scale = Math.floor(canvas.width / (qr.size + quiet * 2));
-    if (scale < 1) {
-      throw new Error("Canvas is too small for QR rendering.");
-    }
-    const drawSize = (qr.size + quiet * 2) * scale;
-    const offset = Math.floor((canvas.width - drawSize) / 2);
+    const plan = getQrRenderPlan(text);
+    canvas.width = plan.pixelSize;
+    canvas.height = plan.pixelSize;
+    canvas.dataset.qrVersion = String(plan.version);
+    canvas.dataset.qrModuleCount = String(plan.moduleCount);
+    canvas.dataset.qrModulePixels = String(plan.modulePixels);
+
     const ctx = canvas.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#000000";
-    for (let y = 0; y < qr.size; y += 1) {
-      for (let x = 0; x < qr.size; x += 1) {
-        if (qr.modules[y][x]) {
-          ctx.fillRect(offset + (x + quiet) * scale, offset + (y + quiet) * scale, scale, scale);
+
+    for (let row = 0; row < plan.moduleCount; row += 1) {
+      for (let col = 0; col < plan.moduleCount; col += 1) {
+        if (plan.qr.isDark(row, col)) {
+          ctx.fillRect(
+            (col + plan.marginModules) * plan.modulePixels,
+            (row + plan.marginModules) * plan.modulePixels,
+            plan.modulePixels,
+            plan.modulePixels
+          );
         }
       }
     }
-    return qr;
+
+    return plan;
   }
 
   function wrapCanvasText(ctx, text, maxWidth) {
@@ -1420,7 +999,9 @@
     shouldEncodeQrAsUrl,
     buildQrContent,
     shortChecksum,
-    makeQrMatrix
+    createQrCode,
+    getQrRenderPlan,
+    drawQrToCanvas
   };
 
   root.ERKApp = api;
