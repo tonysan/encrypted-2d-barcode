@@ -107,6 +107,14 @@
     return String(payload);
   }
 
+  function normalizePassphrase(passphrase) {
+    const value = passphrase == null ? "" : String(passphrase);
+    if (value.length === 0) {
+      throw new Error("Passphrase cannot be empty.");
+    }
+    return value;
+  }
+
   async function derivePbes2Key(passphrase, salt, iterations) {
     const crypto = getCrypto();
     const passwordKey = await crypto.subtle.importKey(
@@ -139,8 +147,7 @@
       alg: PASSWORD_ALG,
       enc: CONTENT_ALG,
       p2c,
-      p2s: base64UrlEncode(p2s),
-      typ: "ERK1"
+      p2s: base64UrlEncode(p2s)
     };
   }
 
@@ -163,7 +170,7 @@
   }
 
   function validatePassphraseHeader(header) {
-    const allowed = new Set(["alg", "enc", "p2c", "p2s", "typ"]);
+    const allowed = new Set(["alg", "enc", "p2c", "p2s"]);
     for (const key of Object.keys(header)) {
       if (!allowed.has(key)) {
         throw new Error("Unsupported JWE protected header.");
@@ -175,9 +182,6 @@
     if (header.enc !== CONTENT_ALG) {
       throw new Error("Unsupported JWE encryption method.");
     }
-    if (header.typ !== "ERK1") {
-      throw new Error("Unsupported JWE type.");
-    }
     if (!Number.isInteger(header.p2c) || header.p2c < 1000 || header.p2c > MAX_P2C) {
       throw new Error("Unsupported JWE PBES2 iteration count.");
     }
@@ -185,7 +189,7 @@
   }
 
   function validateDirectHeader(header) {
-    const allowed = new Set(["alg", "enc", "typ"]);
+    const allowed = new Set(["alg", "enc"]);
     for (const key of Object.keys(header)) {
       if (!allowed.has(key)) {
         throw new Error("Unsupported JWE protected header.");
@@ -196,9 +200,6 @@
     }
     if (header.enc !== CONTENT_ALG) {
       throw new Error("Unsupported JWE encryption method.");
-    }
-    if (header.typ !== "ERK1") {
-      throw new Error("Unsupported JWE type.");
     }
   }
 
@@ -217,6 +218,7 @@
   }
 
   async function encryptPassphraseJwe(plaintext, passphrase, options) {
+    const normalizedPassphrase = normalizePassphrase(passphrase);
     const crypto = getCrypto();
     const p2c = options && options.p2c ? options.p2c : DEFAULT_P2C;
     if (!Number.isInteger(p2c) || p2c < 1000 || p2c > MAX_P2C) {
@@ -232,7 +234,7 @@
       true,
       ["encrypt"]
     );
-    const kek = await derivePbes2Key(passphrase, p2s, p2c);
+    const kek = await derivePbes2Key(normalizedPassphrase, p2s, p2c);
     const header = makeProtectedHeader(p2s, p2c);
     const protectedSegment = base64UrlEncode(utf8Encode(stringifyHeader(header)));
     const encryptedKey = new Uint8Array(await crypto.subtle.wrapKey("raw", cekForEncrypt, kek, "AES-KW"));
@@ -258,12 +260,13 @@
   }
 
   async function decryptPassphraseJwe(compactJwe, passphrase) {
+    const normalizedPassphrase = normalizePassphrase(passphrase);
     const crypto = getCrypto();
     const parts = splitCompactJwe(compactJwe);
     const header = parseProtectedHeader(parts.protectedSegment);
     validatePassphraseHeader(header);
     const salt = base64UrlDecode(header.p2s);
-    const kek = await derivePbes2Key(passphrase, salt, header.p2c);
+    const kek = await derivePbes2Key(normalizedPassphrase, salt, header.p2c);
     const encryptedKey = base64UrlDecode(parts.encryptedKeySegment);
     const iv = base64UrlDecode(parts.ivSegment);
     const ciphertext = base64UrlDecode(parts.ciphertextSegment, { allowEmpty: true });

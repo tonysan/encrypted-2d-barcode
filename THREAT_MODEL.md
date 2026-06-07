@@ -68,7 +68,7 @@ Plain mode must be visually distinct from encrypted modes and must warn that it 
 
 Passphrase mode depends on passphrase strength and the correctness of the strict JWE profile implementation.
 
-The UI recommends 16 or more characters, but creation accepts any passphrase the user chooses.
+The UI recommends 16 or more characters, but creation accepts any non-empty passphrase the user chooses.
 
 Wrong passphrases and corrupted payloads must fail authenticated decryption without displaying garbage plaintext.
 

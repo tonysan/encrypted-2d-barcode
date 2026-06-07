@@ -100,12 +100,26 @@ async function testInitialViewFromFragment() {
 async function testPassphraseJweRoundtrip() {
   const compact = await app.encryptPassphraseJwe("secret string", "this is a long passphrase", { p2c: 1500 });
   assert.equal(compact.split(".").length, 5);
+  assert.equal(Object.hasOwn(app.parseProtectedHeader(compact.split(".")[0]), "typ"), false);
   const detected = app.detectPayload(app.ENCRYPTED_PREFIX + compact);
   assert.equal(detected.kind, "passphrase");
   assert.equal(await app.decryptPassphraseJwe(compact, "this is a long passphrase"), "secret string");
 
-  const emptyPassphraseCompact = await app.encryptPassphraseJwe("empty passphrase secret", "", { p2c: 1500 });
-  assert.equal(await app.decryptPassphraseJwe(emptyPassphraseCompact, ""), "empty passphrase secret");
+  const shortPassphraseCompact = await app.encryptPassphraseJwe("short passphrase secret", "x", { p2c: 1500 });
+  assert.equal(await app.decryptPassphraseJwe(shortPassphraseCompact, "x"), "short passphrase secret");
+}
+
+async function testEmptyPassphraseRejection() {
+  await rejectsWith(
+    () => app.encryptPassphraseJwe("secret string", "", { p2c: 1500 }),
+    /Passphrase cannot be empty/
+  );
+
+  const compact = await app.encryptPassphraseJwe("secret string", "x", { p2c: 1500 });
+  await rejectsWith(
+    () => app.decryptPassphraseJwe(compact, ""),
+    /Passphrase cannot be empty/
+  );
 }
 
 async function testWrongPassphrase() {
@@ -135,6 +149,18 @@ async function testUnsupportedHeaderRejection() {
   await rejectsWith(
     () => app.decryptPassphraseJwe(parts.join("."), "this is a long passphrase"),
     /Unsupported JWE algorithm/
+  );
+}
+
+async function testTypHeaderRejection() {
+  const compact = await app.encryptPassphraseJwe("secret string", "this is a long passphrase", { p2c: 1500 });
+  const parts = compact.split(".");
+  const header = app.parseProtectedHeader(parts[0]);
+  header.typ = "ERK1";
+  parts[0] = app.base64UrlEncode(app.utf8Encode(JSON.stringify(header)));
+  await rejectsWith(
+    () => app.decryptPassphraseJwe(parts.join("."), "this is a long passphrase"),
+    /Unsupported JWE protected header/
   );
 }
 
@@ -192,9 +218,11 @@ async function run() {
     testQrContentUsesPayloadForLocalFile,
     testInitialViewFromFragment,
     testPassphraseJweRoundtrip,
+    testEmptyPassphraseRejection,
     testWrongPassphrase,
     testCorruptedPayload,
     testUnsupportedHeaderRejection,
+    testTypHeaderRejection,
     testRemoteHeaderRejection,
     testQrLibraryMatrix,
     testPassphraseQrRenderPlan
