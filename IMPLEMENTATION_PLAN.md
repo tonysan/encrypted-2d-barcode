@@ -277,9 +277,7 @@ Keep the app small and auditable.
 
 ```text
 /
-  index.html
-  style.css
-  app.js
+  package.json
   README.md
   SECURITY.md
   THREAT_MODEL.md
@@ -287,6 +285,12 @@ Keep the app small and auditable.
   IMPLEMENTATION_PLAN.md
   LICENSE
   checksums.txt
+  /static
+    index.html
+    style.css
+    app.js
+    _headers
+    LICENSE
   /src
     main.ts
     ui-create.ts
@@ -317,6 +321,8 @@ Keep the app small and auditable.
 ```
 
 If plain JavaScript is chosen instead of TypeScript, preserve the same module boundaries.
+
+Cloudflare Pages should use `static` as the build output directory so repository-root docs, tests, and planning files are not published.
 
 ## 10. Phased Implementation Plan
 
@@ -377,7 +383,7 @@ Goal: replace manual payload copy with a printable/scannable code.
 
 Tasks:
 
-- Add local vendored 2D barcode generation dependency.
+- Add local QR-compatible 2D barcode generation.
 - Generate a barcode for plain and encrypted payloads.
 - Add download/print support.
 - Show human-readable payload text as fallback.
@@ -395,9 +401,9 @@ Goal: complete the usability loop.
 
 Tasks:
 
-- Add local vendored barcode scanning dependency.
-- Add camera scanning flow.
-- Add image upload scanning flow if feasible.
+- Add native `BarcodeDetector` scanning where browsers support it.
+- Add camera scanning flow where the browser context allows camera access.
+- Add image upload scanning flow where native detection supports image sources.
 - Preserve manual paste fallback.
 - Detect supported app markers.
 - Show clear error for unknown barcode content.
@@ -406,6 +412,7 @@ Tasks:
 Exit criteria:
 
 - User can create a barcode, reload the app, scan it, enter passphrase, and recover the string.
+- Browsers without native scan support still recover through manual paste.
 
 ### Phase 4: URL Fragment Mode
 
@@ -474,6 +481,7 @@ Tasks:
 - Add license inventory.
 - Add checksums.
 - Create downloadable static ZIP release.
+- Keep deployable browser assets isolated under `static/`.
 - Document recommended security headers.
 - Verify no network calls after static asset load.
 - Verify no secret storage in localStorage/sessionStorage.
@@ -596,6 +604,7 @@ Mitigations:
 - Show payload text fallback.
 - Add print guidance.
 - Defer multi-chunk support until real demand appears.
+- Validate QR interoperability against external scanners before treating barcode support as release-quality.
 
 ### Static Hosting
 

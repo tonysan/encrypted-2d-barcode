@@ -2,9 +2,9 @@
 
 ## Current Status
 
-This repository is in Phase 0: documentation and planning. No production-ready app code has been implemented yet.
+This repository has an early no-build static app scaffold. It is not production-ready and has not had an external security review.
 
-Do not rely on this repository for storing or recovering secrets until a reviewed release exists.
+Do not rely on this repository for storing or recovering important secrets until a reviewed release exists.
 
 ## Security Goals
 

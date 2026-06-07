@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="no-referrer">
+    <title>Encrypted 2D Barcode</title>
+    <link rel="stylesheet" href="./style.css">
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <h1>Encrypted 2D Barcode</h1>
+        <p>Static local string encryption with printable recovery codes.</p>
+      </div>
+      <div class="version" id="app-version">v0.1.0-dev</div>
+    </header>
+
+    <main class="workspace">
+      <section class="panel create-panel" aria-labelledby="create-title">
+        <div class="panel-heading">
+          <h2 id="create-title">Create</h2>
+          <span class="phase-badge">Phases 1-4</span>
+        </div>
+
+        <fieldset class="mode-picker">
+          <legend>Mode</legend>
+          <label>
+            <input type="radio" name="create-mode" value="passphrase" checked>
+            <span>Passphrase</span>
+          </label>
+          <label>
+            <input type="radio" name="create-mode" value="plain">
+            <span>Plain</span>
+          </label>
+          <label class="disabled-choice">
+            <input type="radio" name="create-mode" value="webauthn" disabled>
+            <span>WebAuthn PRF</span>
+          </label>
+        </fieldset>
+
+        <div id="plain-warning" class="warning hidden" role="status">
+          Plain mode is not encrypted. Anyone who scans the code can read the string.
+        </div>
+
+        <label class="field">
+          <span>String</span>
+          <textarea id="secret-input" rows="8" autocomplete="off" spellcheck="false" placeholder="Enter the string to encode"></textarea>
+        </label>
+
+        <div id="passphrase-create-fields" class="field-grid">
+          <label class="field">
+            <span>Passphrase</span>
+            <input id="create-passphrase" type="password" autocomplete="new-password">
+          </label>
+          <label class="field">
+            <span>Confirm</span>
+            <input id="create-passphrase-confirm" type="password" autocomplete="new-password">
+          </label>
+        </div>
+
+        <div class="actions">
+          <button id="create-button" type="button">Create Code</button>
+          <button id="clear-create-button" type="button" class="secondary">Clear</button>
+        </div>
+
+        <div id="create-error" class="error" role="alert"></div>
+
+        <div id="output-area" class="output-area hidden">
+          <label class="field">
+            <span>Payload</span>
+            <textarea id="payload-output" rows="5" readonly spellcheck="false"></textarea>
+          </label>
+
+          <div class="actions wrap">
+            <button id="copy-payload-button" type="button" class="secondary">Copy Payload</button>
+            <button id="copy-url-button" type="button" class="secondary">Copy URL</button>
+            <button id="download-code-button" type="button" class="secondary">Download PNG</button>
+            <button id="print-button" type="button" class="secondary">Print</button>
+          </div>
+
+          <div class="code-sheet" id="code-sheet">
+            <div class="code-meta">
+              <strong id="code-mode-label">Encrypted code</strong>
+              <span id="code-date"></span>
+              <span id="code-checksum"></span>
+            </div>
+            <canvas id="qr-canvas" width="680" height="680" aria-label="2D barcode payload"></canvas>
+            <p class="payload-fallback" id="payload-fallback"></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel recover-panel" aria-labelledby="recover-title">
+        <div class="panel-heading">
+          <h2 id="recover-title">Recover</h2>
+          <span class="origin" id="origin-label"></span>
+        </div>
+
+        <div id="fragment-banner" class="notice hidden" role="status">
+          URL fragment payload imported.
+          <button id="clear-fragment-button" type="button" class="link-button">Clear URL Fragment</button>
+        </div>
+
+        <div class="scanner">
+          <video id="scan-video" playsinline muted class="scan-video hidden"></video>
+          <div class="actions wrap">
+            <button id="start-scan-button" type="button" class="secondary">Start Camera Scan</button>
+            <button id="stop-scan-button" type="button" class="secondary" disabled>Stop Camera</button>
+            <label class="file-button">
+              Scan Image
+              <input id="image-scan-input" type="file" accept="image/*">
+            </label>
+          </div>
+          <div id="scan-status" class="hint"></div>
+        </div>
+
+        <label class="field">
+          <span>Scanned or pasted payload</span>
+          <textarea id="recover-payload" rows="7" spellcheck="false" placeholder="Paste ERP1... or ERK1... payload"></textarea>
+        </label>
+
+        <div id="recover-mode-summary" class="mode-summary">Waiting for payload.</div>
+
+        <label class="field" id="recover-passphrase-field">
+          <span>Passphrase</span>
+          <input id="recover-passphrase" type="password" autocomplete="current-password">
+        </label>
+
+        <div class="actions">
+          <button id="recover-button" type="button">Recover String</button>
+          <button id="clear-recover-button" type="button" class="secondary">Clear</button>
+        </div>
+
+        <div id="recover-error" class="error" role="alert"></div>
+
+        <div id="protected-area" class="protected-area hidden">
+          <div class="protected-toolbar">
+            <strong>Recovered string</strong>
+            <span id="hide-countdown"></span>
+          </div>
+          <canvas id="protected-canvas" width="900" height="360" aria-label="Recovered string is rendered on canvas"></canvas>
+          <div class="actions wrap">
+            <button id="hide-secret-button" type="button" class="secondary">Hide</button>
+            <button id="copy-secret-button" type="button" class="danger">Copy Anyway</button>
+          </div>
+          <p class="hint">Canvas display reduces casual DOM exposure. It does not protect against a compromised browser, OS, extension, screenshot, screen recorder, or keylogger.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

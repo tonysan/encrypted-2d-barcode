@@ -2,27 +2,39 @@
 
 ## Current Status
 
-This repository is in Phase 0. There is not yet a release ZIP or working static app to host.
+This repository has an early no-build static app scaffold. There is not yet a reviewed release ZIP.
 
-This document describes the intended self-hosting model.
+You can open `static/index.html` directly for local testing. A formal release should still package and checksum the static files before real use.
 
 ## Hosting Model
 
-The app should be distributed as static files only:
+The deployable app lives in `static/` and should be distributed as static files only:
 
 ```text
-index.html
-app.js
-style.css
-LICENSE
-SECURITY.md
-THREAT_MODEL.md
-SELF_HOSTING.md
-checksums.txt
-vendored or bundled runtime dependencies
+static/index.html
+static/app.js
+static/style.css
+static/_headers
+static/LICENSE
 ```
 
 No server-side code, database, account system, telemetry, analytics, CDN runtime script, or cloud function should be required.
+
+Repo-root docs, tests, and planning files are not part of the Cloudflare Pages deploy output.
+
+## Cloudflare Pages Settings
+
+For Git integration:
+
+```text
+Framework preset: None / Static HTML
+Production branch: main
+Build command: npm run build
+Build output directory: static
+Root directory: blank or /
+```
+
+The build command runs local tests and verifies the required files in `static/`. Cloudflare should serve only `static/`, not the repository root.
 
 ## Recommended Workflow for a Future Release
 
@@ -42,7 +54,9 @@ No server-side code, database, account system, telemetry, analytics, CDN runtime
 
 Passphrase mode should be designed to work from a local or offline static copy where browser APIs allow.
 
-Camera scanning and WebAuthn may not work from local files in all browsers. Manual paste recovery should remain available.
+Camera scanning depends on browser support for camera access and native `BarcodeDetector`. It may not work from local files or in all browsers. Manual paste recovery must remain available.
+
+WebAuthn is not implemented yet and will require a compatible secure origin when added.
 
 ## WebAuthn PRF Hosting Warning
 
@@ -60,7 +74,7 @@ If the original origin, credential, browser support, or authenticator support is
 
 ## Suggested Security Headers
 
-Hosted deployments should use restrictive headers where practical. Exact headers may need adjustment after implementation.
+Hosted deployments should use restrictive headers where practical. The current Cloudflare Pages headers live in `static/_headers`.
 
 Starting point:
 
