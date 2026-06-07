@@ -13,7 +13,7 @@
         <h1>Encrypted 2D Barcode</h1>
         <p>Static local string encryption with printable recovery codes.</p>
       </div>
-      <div class="version" id="app-version">v0.1.0-dev</div>
+      <div class="version" id="app-version"><a href="https://github.com/tonysan/encrypted-2d-barcode" target="_blank" rel="noopener noreferrer">v0.1.0-dev</a></div>
     </header>
 
     <main class="workspace">
@@ -26,12 +26,12 @@
         <fieldset class="mode-picker">
           <legend>Mode</legend>
           <label>
-            <input type="radio" name="create-mode" value="passphrase" checked>
-            <span>Passphrase</span>
-          </label>
-          <label>
             <input type="radio" name="create-mode" value="plain">
             <span>Plain</span>
+          </label>
+          <label>
+            <input type="radio" name="create-mode" value="passphrase" checked>
+            <span>Passphrase Protected</span>
           </label>
           <label class="disabled-choice">
             <input type="radio" name="create-mode" value="webauthn" disabled>
@@ -51,11 +51,11 @@
         <div id="passphrase-create-fields" class="field-grid">
           <label class="field">
             <span>Passphrase</span>
-            <input id="create-passphrase" type="password" autocomplete="new-password">
+            <input id="create-passphrase" type="password" autocomplete="new-password" placeholder="16 characters minimum">
           </label>
           <label class="field">
             <span>Confirm</span>
-            <input id="create-passphrase-confirm" type="password" autocomplete="new-password">
+            <input id="create-passphrase-confirm" type="password" autocomplete="new-password" placeholder="Re-enter the passphrase">
           </label>
         </div>
 
