@@ -333,8 +333,35 @@
     }
   }
 
+  function extractPayloadFromInput(input) {
+    const value = String(input || "").trim();
+    if (value.startsWith(PLAIN_PREFIX) || value.startsWith(ENCRYPTED_PREFIX)) {
+      return value;
+    }
+    let parsed;
+    try {
+      parsed = new URL(value);
+    } catch (error) {
+      throw new Error("Unsupported payload marker.");
+    }
+    const hash = parsed.hash ? parsed.hash.slice(1) : "";
+    if (!hash) {
+      throw new Error("URL does not contain a recovery payload fragment.");
+    }
+    let decodedHash;
+    try {
+      decodedHash = decodeURIComponent(hash);
+    } catch (error) {
+      decodedHash = hash;
+    }
+    if (decodedHash.startsWith(PLAIN_PREFIX) || decodedHash.startsWith(ENCRYPTED_PREFIX)) {
+      return decodedHash;
+    }
+    throw new Error("URL fragment does not contain a supported payload.");
+  }
+
   function detectPayload(input) {
-    const payload = String(input || "").trim();
+    const payload = extractPayloadFromInput(input);
     if (payload.startsWith(PLAIN_PREFIX)) {
       return {
         kind: "plain",
@@ -931,8 +958,31 @@
     }
   }
 
+  function determineInitialView(locationLike) {
+    const locationValue = locationLike || root.location;
+    return locationValue && locationValue.hash && locationValue.hash.length > 1 ? "recover" : "create";
+  }
+
   function buildFragmentUrl(payload) {
     return root.location.href.split("#")[0] + "#" + encodeURIComponent(payload);
+  }
+
+  function shouldEncodeQrAsUrl(locationLike) {
+    const locationValue = locationLike || root.location;
+    return Boolean(
+      locationValue &&
+      (locationValue.protocol === "https:" || locationValue.protocol === "http:") &&
+      locationValue.origin &&
+      locationValue.origin !== "null"
+    );
+  }
+
+  function buildQrContent(payload, locationLike) {
+    if (!shouldEncodeQrAsUrl(locationLike)) {
+      return payload;
+    }
+    const locationValue = locationLike || root.location;
+    return locationValue.href.split("#")[0] + "#" + encodeURIComponent(payload);
   }
 
   async function copyText(text, fallbackTextArea) {
@@ -1017,6 +1067,7 @@
       : "local file";
 
     let latestPayload = "";
+    let latestQrContent = "";
     let recoveredSecret = "";
     let hideTimer = 0;
     let countdownTimer = 0;
@@ -1043,6 +1094,10 @@
       setHidden(elements.plainWarning, mode !== "plain");
     }
 
+    function setAppView(view) {
+      document.body.dataset.view = view === "recover" ? "recover" : "create";
+    }
+
     function updateRecoverSummary() {
       clearError(elements.recoverError);
       const value = elements.recoverPayload.value.trim();
@@ -1062,12 +1117,13 @@
 
     function renderOutput(payload, modeLabel) {
       latestPayload = payload;
+      latestQrContent = buildQrContent(payload);
       elements.payloadOutput.value = payload;
-      elements.payloadFallback.textContent = payload;
+      elements.payloadFallback.textContent = latestQrContent;
       elements.codeModeLabel.textContent = modeLabel;
       elements.codeDate.textContent = new Date().toISOString().slice(0, 10);
-      elements.codeChecksum.textContent = "Checksum " + shortChecksum(payload);
-      drawQrToCanvas(elements.qrCanvas, payload);
+      elements.codeChecksum.textContent = "Checksum " + shortChecksum(latestQrContent);
+      drawQrToCanvas(elements.qrCanvas, latestQrContent);
       setHidden(elements.outputArea, false);
     }
 
@@ -1247,6 +1303,7 @@
       elements.createPassphraseConfirm.value = "";
       elements.payloadOutput.value = "";
       latestPayload = "";
+      latestQrContent = "";
       setHidden(elements.outputArea, true);
       clearError(elements.createError);
     });
@@ -1302,6 +1359,7 @@
         root.history.replaceState(null, "", root.location.href.split("#")[0]);
       }
       setHidden(elements.fragmentBanner, true);
+      setAppView("create");
     });
     root.addEventListener("blur", hideSecret);
     document.addEventListener("visibilitychange", () => {
@@ -1311,6 +1369,7 @@
     });
 
     const fragmentPayload = getFragmentPayload();
+    setAppView(determineInitialView(root.location));
     if (fragmentPayload) {
       elements.recoverPayload.value = fragmentPayload;
       updateRecoverSummary();
@@ -1334,10 +1393,15 @@
     validatePassphraseForCreation,
     encryptPassphraseJwe,
     decryptPassphraseJwe,
+    extractPayloadFromInput,
     detectPayload,
     parseProtectedHeader,
     validatePassphraseHeader,
     splitCompactJwe,
+    buildFragmentUrl,
+    determineInitialView,
+    shouldEncodeQrAsUrl,
+    buildQrContent,
     shortChecksum,
     makeQrMatrix
   };

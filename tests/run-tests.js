@@ -28,6 +28,39 @@ async function testPlainPayload() {
   assert.equal(app.detectPayload(payload).kind, "plain");
 }
 
+async function testUrlPayloadExtraction() {
+  const payload = app.encodePlainPayload("from url");
+  const url = `https://codes.example/recover/#${encodeURIComponent(payload)}`;
+  assert.equal(app.extractPayloadFromInput(url), payload);
+  assert.equal(app.detectPayload(url).kind, "plain");
+}
+
+async function testQrContentUsesHostedUrl() {
+  const payload = app.encodePlainPayload("hosted qr");
+  const qrContent = app.buildQrContent(payload, {
+    protocol: "https:",
+    origin: "https://codes.example",
+    href: "https://codes.example/app/index.html?ignored=true#old"
+  });
+  assert.equal(qrContent, `https://codes.example/app/index.html?ignored=true#${encodeURIComponent(payload)}`);
+}
+
+async function testQrContentUsesPayloadForLocalFile() {
+  const payload = app.encodePlainPayload("local qr");
+  const qrContent = app.buildQrContent(payload, {
+    protocol: "file:",
+    origin: "null",
+    href: "file:///C:/app/index.html"
+  });
+  assert.equal(qrContent, payload);
+}
+
+async function testInitialViewFromFragment() {
+  assert.equal(app.determineInitialView({ hash: "" }), "create");
+  assert.equal(app.determineInitialView({ hash: "#ERK1.payload" }), "recover");
+  assert.equal(app.determineInitialView({ hash: "#anything" }), "recover");
+}
+
 async function testPassphraseJweRoundtrip() {
   const compact = await app.encryptPassphraseJwe("secret string", "this is a long passphrase", { p2c: 1500 });
   assert.equal(compact.split(".").length, 5);
@@ -95,6 +128,10 @@ async function run() {
   const tests = [
     testBase64Url,
     testPlainPayload,
+    testUrlPayloadExtraction,
+    testQrContentUsesHostedUrl,
+    testQrContentUsesPayloadForLocalFile,
+    testInitialViewFromFragment,
     testPassphraseJweRoundtrip,
     testWrongPassphrase,
     testCorruptedPayload,

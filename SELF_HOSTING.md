@@ -36,6 +36,10 @@ Root directory: blank or /
 
 The build command runs local tests and verifies the required files in `static/`. Cloudflare should serve only `static/`, not the repository root.
 
+Generated QR codes are domain-aware. When the app runs on an HTTP(S) domain, the QR contains the current page URL with the recovery payload in the fragment. Create production QR codes from the final custom domain, not the temporary `pages.dev` preview, if you want scans to open the custom domain.
+
+The app uses the URL fragment to choose its initial screen. A normal visit shows create/encrypt only. A visit with any fragment shows recover/decrypt only.
+
 ## Recommended Workflow for a Future Release
 
 1. Download the release ZIP.

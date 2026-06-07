@@ -7,7 +7,7 @@
     <title>Encrypted 2D Barcode</title>
     <link rel="stylesheet" href="./style.css">
   </head>
-  <body>
+  <body data-view="create">
     <header class="app-header">
       <div>
         <h1>Encrypted 2D Barcode</h1>
@@ -85,7 +85,8 @@
               <span id="code-date"></span>
               <span id="code-checksum"></span>
             </div>
-            <canvas id="qr-canvas" width="680" height="680" aria-label="2D barcode payload"></canvas>
+            <canvas id="qr-canvas" width="680" height="680" aria-label="2D barcode recovery URL or payload"></canvas>
+            <div class="fallback-label">QR contents</div>
             <p class="payload-fallback" id="payload-fallback"></p>
           </div>
         </div>
@@ -116,8 +117,8 @@
         </div>
 
         <label class="field">
-          <span>Scanned or pasted payload</span>
-          <textarea id="recover-payload" rows="7" spellcheck="false" placeholder="Paste ERP1... or ERK1... payload"></textarea>
+          <span>Scanned or pasted URL/payload</span>
+          <textarea id="recover-payload" rows="7" spellcheck="false" placeholder="Paste https://.../#ERK1..., ERP1..., or ERK1..."></textarea>
         </label>
 
         <div id="recover-mode-summary" class="mode-summary">Waiting for payload.</div>

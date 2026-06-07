@@ -126,6 +126,25 @@ Build output directory: static
 
 The build script validates tests and required static deployment files. It does not bundle or fetch runtime dependencies.
 
+When the app is opened from an HTTP(S) domain, generated QR codes contain the current page URL plus the payload in the fragment:
+
+```text
+https://your-domain.example/#ERK1.<compact-jwe>
+```
+
+When opened from a local file or non-web origin, generated QR codes contain the payload only:
+
+```text
+ERK1.<compact-jwe>
+```
+
+For future WebAuthn PRF mode, create codes from the final stable custom HTTPS domain. WebAuthn recovery is origin/RP ID bound.
+
+The page is mode-aware:
+
+- No URL fragment: show the create/encrypt screen only.
+- URL fragment present: show the recover/decrypt screen only.
+
 See [SELF_HOSTING.md](SELF_HOSTING.md).
 
 ## Supply Chain Position

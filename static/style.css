@@ -124,6 +124,17 @@ button.danger {
   padding: 0 clamp(18px, 4vw, 56px) 42px;
 }
 
+body[data-view="create"] .recover-panel,
+body[data-view="recover"] .create-panel {
+  display: none;
+}
+
+body[data-view="create"] .workspace,
+body[data-view="recover"] .workspace {
+  grid-template-columns: minmax(0, 860px);
+  justify-content: center;
+}
+
 .panel {
   min-width: 0;
   border: 1px solid var(--line);
@@ -315,6 +326,13 @@ button:focus-visible,
   color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
   font-size: 0.78rem;
+}
+
+.fallback-label {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
 }
 
 .scan-video {

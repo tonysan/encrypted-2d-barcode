@@ -422,12 +422,17 @@ Tasks:
 
 - Add URL export: `https://host/#ERK1.<compact-jwe>`.
 - Parse supported `location.hash` payloads on page load.
+- Encode hosted QR codes as full recovery URLs using the current origin/path and fragment payload.
+- Keep local-file/offline QR codes payload-only.
+- Show the create screen only when no fragment is present.
+- Show the recover screen only when a fragment is present.
 - Offer to clear the hash after import.
 - Reject or ignore query-string payloads.
 
 Exit criteria:
 
 - Hosted app can import encrypted payloads from URL fragments.
+- Scanning a hosted QR opens the web app with the payload in the fragment.
 - Payload-only mode still works for offline/local workflows.
 
 ### Phase 5: WebAuthn PRF Prototype
