@@ -1,6 +1,7 @@
 (function initRuntime(root) {
   "use strict";
 
+  const APP_VERSION = getPackageVersion();
   const ENCRYPTED_PREFIX = "ERK1.";
   const PLAIN_PREFIX = "ERP1.";
   const PASSWORD_ALG = "PBES2-HS512+A256KW";
@@ -21,6 +22,20 @@
     "letmeinletmein",
     "correcthorsebatterystaple"
   ]);
+
+  function getPackageVersion() {
+    if (root.ERK_PACKAGE && root.ERK_PACKAGE.version) {
+      return root.ERK_PACKAGE.version;
+    }
+    if (typeof require === "function") {
+      try {
+        return require("../package.json").version;
+      } catch (error) {
+        return "0.0.0";
+      }
+    }
+    return "0.0.0";
+  }
 
   function getCrypto() {
     if (root.crypto && root.crypto.subtle && root.crypto.getRandomValues) {
@@ -107,14 +122,14 @@
   }
 
   function encodePlainPayload(text) {
-    return PLAIN_PREFIX + base64UrlEncode(utf8Encode(text));
+    return String(text);
   }
 
   function decodePlainPayload(payload) {
-    if (!payload.startsWith(PLAIN_PREFIX)) {
-      throw new Error("Not a plain payload.");
+    if (payload.startsWith(PLAIN_PREFIX)) {
+      return utf8Decode(base64UrlDecode(payload.slice(PLAIN_PREFIX.length)));
     }
-    return utf8Decode(base64UrlDecode(payload.slice(PLAIN_PREFIX.length)));
+    return String(payload);
   }
 
   function validatePassphraseForCreation(passphrase) {
@@ -335,19 +350,23 @@
   }
 
   function extractPayloadFromInput(input) {
-    const value = String(input || "").trim();
-    if (value.startsWith(PLAIN_PREFIX) || value.startsWith(ENCRYPTED_PREFIX)) {
-      return value;
+    const raw = String(input || "");
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      throw new Error("Enter a payload first.");
+    }
+    if (trimmed.startsWith(PLAIN_PREFIX) || trimmed.startsWith(ENCRYPTED_PREFIX)) {
+      return trimmed;
     }
     let parsed;
     try {
-      parsed = new URL(value);
+      parsed = new URL(trimmed);
     } catch (error) {
-      throw new Error("Unsupported payload marker.");
+      return raw;
     }
     const hash = parsed.hash ? parsed.hash.slice(1) : "";
     if (!hash) {
-      throw new Error("URL does not contain a recovery payload fragment.");
+      return raw;
     }
     let decodedHash;
     try {
@@ -358,7 +377,7 @@
     if (decodedHash.startsWith(PLAIN_PREFIX) || decodedHash.startsWith(ENCRYPTED_PREFIX)) {
       return decodedHash;
     }
-    throw new Error("URL fragment does not contain a supported payload.");
+    return raw;
   }
 
   function detectPayload(input) {
@@ -394,7 +413,11 @@
       }
       throw new Error("Unsupported encrypted payload.");
     }
-    throw new Error("Unsupported payload marker.");
+    return {
+      kind: "plain",
+      payload,
+      label: "Plain unencrypted payload"
+    };
   }
 
   function shortChecksum(value) {
@@ -613,7 +636,8 @@
       codeModeLabel: $("code-mode-label"),
       codeDate: $("code-date"),
       codeChecksum: $("code-checksum"),
-      payloadFallback: $("payload-fallback"),
+      qrContentOutput: $("qr-content-output"),
+      qrContentField: $("qr-content-field"),
       recoverPayload: $("recover-payload"),
       recoverPassphrase: $("recover-passphrase"),
       recoverPassphraseField: $("recover-passphrase-field"),
@@ -665,8 +689,8 @@
 
     function updateRecoverSummary() {
       clearError(elements.recoverError);
-      const value = elements.recoverPayload.value.trim();
-      if (!value) {
+      const value = elements.recoverPayload.value;
+      if (!value.trim()) {
         elements.recoverModeSummary.textContent = "Waiting for payload.";
         setHidden(elements.recoverPassphraseField, false);
         return;
@@ -687,7 +711,8 @@
         throw new Error("Hosted QR generation must include this page URL.");
       }
       elements.payloadOutput.value = payload;
-      elements.payloadFallback.textContent = latestQrContent;
+      elements.qrContentOutput.value = latestQrContent;
+      setHidden(elements.qrContentField, latestQrContent === payload);
       elements.codeModeLabel.textContent = modeLabel;
       elements.codeDate.textContent = new Date().toISOString().slice(0, 10);
       elements.codeChecksum.textContent = "Checksum " + shortChecksum(latestQrContent);
@@ -782,6 +807,7 @@
       elements.createPassphrase.value = "";
       elements.createPassphraseConfirm.value = "";
       elements.payloadOutput.value = "";
+      elements.qrContentOutput.value = "";
       latestPayload = "";
       latestQrContent = "";
       setHidden(elements.outputArea, true);
@@ -851,6 +877,7 @@
   }
 
   const api = {
+    APP_VERSION,
     ENCRYPTED_PREFIX,
     PLAIN_PREFIX,
     base64UrlEncode,

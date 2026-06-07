@@ -45,7 +45,7 @@ See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the phased build plan.
 
 ### Plain Mode
 
-No encryption. The barcode contains the string or an app-marked plain payload.
+No encryption. The barcode contains exactly the string.
 
 This mode is unsafe for secrets and must be clearly labeled in the UI.
 
@@ -125,6 +125,14 @@ Build output directory: static
 
 The build script validates tests and required static deployment files, then copies the pinned `qrcode-generator` browser file into `static/vendor/` for same-origin deployment.
 
+For local development:
+
+```text
+npm run dev
+```
+
+The dev server serves the app at `http://127.0.0.1:8788/` by default.
+
 When the app is opened from an HTTP(S) domain, encrypted QR codes contain the current page URL plus the payload in the fragment:
 
 ```text
@@ -134,7 +142,7 @@ https://your-domain.example/#ERK1.<compact-jwe>
 Plain mode QR codes always contain only the plain payload:
 
 ```text
-ERP1.<base64url-string>
+the exact string entered by the user
 ```
 
 When opened from a local file or non-web origin, encrypted QR codes contain the payload only:

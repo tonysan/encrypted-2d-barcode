@@ -163,15 +163,13 @@ The WebAuthn PRF profile should reuse the same strict compact-JWE encoder/decode
 
 ### Plain Payloads
 
-Plain mode may use either:
+Plain mode uses direct cleartext in the barcode:
 
 ```text
-ERP1.<encoded-plain-string>
+the exact string entered by the user
 ```
 
-or direct cleartext in the barcode.
-
-Using an app marker is preferred so the scanner can detect that the barcode came from this app and show a clear warning before display.
+Legacy `ERP1.<encoded-plain-string>` payloads may remain decodable for compatibility, but new plain QR codes should not use that marker.
 
 Plain mode must be visually and textually impossible to confuse with encryption.
 
@@ -188,7 +186,6 @@ Rules:
 - Payloads go in the URL fragment only.
 - Never put payloads in query parameters.
 - On load, detect supported fragments.
-- Offer to clear the fragment after import.
 - Keep payload-only mode for offline and self-hosted use.
 
 ## 5. Security Model
@@ -338,7 +335,7 @@ Tasks:
 - Write SELF_HOSTING.md placeholder.
 - Document static/no-backend/no-telemetry requirements.
 - Document the chosen JWE profiles.
-- Document that `ERK1` and `ERP1` are app markers, not new encryption formats.
+- Document that `ERK1` is an app marker, not a new encryption format.
 - Document the strict-profile JWE implementation approach.
 - Document supply-chain rules.
 
@@ -358,7 +355,7 @@ Tasks:
 - Implement the narrow JWE Compact profile with Web Crypto.
 - Enforce passphrase creation rules.
 - Allow decryption attempts for older payloads even if the passphrase would fail current creation rules.
-- Add payload output text area.
+- Add collapsed technical payload and QR-content fields with copy actions.
 - Add manual paste recovery.
 - Add protected canvas display.
 - Reject unsupported JWE profiles.
@@ -543,7 +540,7 @@ Exit criteria:
 - Decrypted value displays in protected canvas mode.
 - Copy requires explicit action.
 - URL fragment import works.
-- Hash clearing requires confirmation.
+- QR-content and payload details stay hidden from print.
 
 ### Barcode Tests
 
@@ -553,7 +550,7 @@ Exit criteria:
 - Scan printed barcode where practical.
 - Recover from scanned payload.
 - Recover through manual text fallback.
-- Unknown barcode content shows clear error.
+- Malformed encrypted barcode content shows clear error.
 
 ### WebAuthn PRF Tests
 
@@ -604,7 +601,7 @@ Risks:
 Mitigations:
 
 - Keep v1 strings reasonably sized.
-- Show payload text fallback.
+- Show payload text in collapsed technical details.
 - Add print guidance.
 - Defer multi-chunk support until real demand appears.
 - Validate QR interoperability against external scanners before treating barcode support as release-quality.

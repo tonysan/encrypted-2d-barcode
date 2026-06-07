@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="referrer" content="no-referrer">
     <title>Encrypted 2D Barcode</title>
-    <link rel="stylesheet" href="./style.css?v=0.1.4">
+    <link rel="stylesheet" href="./style.css?v=0.1.0">
   </head>
   <body data-view="create">
     <header class="app-header">
@@ -13,7 +13,10 @@
         <h1>Encrypted 2D Barcode</h1>
         <p>Static local string encryption with printable recovery codes.</p>
       </div>
-      <div class="version" id="app-version"><a href="https://github.com/tonysan/encrypted-2d-barcode" target="_blank" rel="noopener noreferrer">v0.1.0-dev</a></div>
+      <div class="version">
+        <span id="app-version">v0.0.0</span>
+        <a href="https://github.com/tonysan/encrypted-2d-barcode" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
     </header>
 
     <main class="workspace">
@@ -67,18 +70,6 @@
         <div id="create-error" class="error" role="alert"></div>
 
         <div id="output-area" class="output-area hidden">
-          <label class="field">
-            <span>Payload</span>
-            <textarea id="payload-output" rows="5" readonly spellcheck="false"></textarea>
-          </label>
-
-          <div class="actions wrap">
-            <button id="copy-payload-button" type="button" class="secondary">Copy Payload</button>
-            <button id="copy-url-button" type="button" class="secondary">Copy QR Content</button>
-            <button id="download-code-button" type="button" class="secondary">Download PNG</button>
-            <button id="print-button" type="button" class="secondary">Print</button>
-          </div>
-
           <div class="code-sheet" id="code-sheet">
             <div class="code-meta">
               <strong id="code-mode-label">Encrypted code</strong>
@@ -86,9 +77,30 @@
               <span id="code-checksum"></span>
             </div>
             <canvas id="qr-canvas" width="680" height="680" aria-label="2D barcode recovery URL or payload"></canvas>
-            <div class="fallback-label">QR contents</div>
-            <p class="payload-fallback" id="payload-fallback"></p>
           </div>
+
+          <div class="actions wrap code-actions">
+            <button id="download-code-button" type="button" class="secondary">Download PNG</button>
+            <button id="print-button" type="button" class="secondary">Print</button>
+          </div>
+
+          <details class="tech-details">
+            <summary>Technical details</summary>
+            <label class="field compact-field">
+              <span>Payload</span>
+              <div class="copy-row">
+                <input id="payload-output" type="text" readonly spellcheck="false">
+                <button id="copy-payload-button" type="button" class="secondary">Copy</button>
+              </div>
+            </label>
+            <label class="field compact-field" id="qr-content-field">
+              <span>QR content</span>
+              <div class="copy-row">
+                <input id="qr-content-output" type="text" readonly spellcheck="false">
+                <button id="copy-url-button" type="button" class="secondary">Copy</button>
+              </div>
+            </label>
+          </details>
         </div>
       </section>
 
@@ -104,7 +116,7 @@
 
         <label class="field">
           <span>URL or payload</span>
-          <textarea id="recover-payload" rows="7" spellcheck="false" placeholder="Paste https://.../#ERK1..., ERP1..., or ERK1..."></textarea>
+          <textarea id="recover-payload" rows="7" spellcheck="false" placeholder="Paste https://.../#ERK1..., ERK1..., or plain text"></textarea>
         </label>
 
         <div id="recover-mode-summary" class="mode-summary">Waiting for payload.</div>
@@ -136,7 +148,8 @@
       </section>
     </main>
 
+    <script src="./version.js?v=0.1.0"></script>
     <script src="./vendor/qrcode-generator.js?v=1.4.4"></script>
-    <script src="./app.js?v=0.1.4"></script>
+    <script src="./app.js?v=0.1.0"></script>
   </body>
 </html>

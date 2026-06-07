@@ -15,6 +15,7 @@ static/index.html
 static/app.js
 static/style.css
 static/_headers
+static/version.js
 static/vendor/qrcode-generator.js
 static/LICENSE
 ```
@@ -42,6 +43,14 @@ Encrypted QR codes are domain-aware. When the app runs on an HTTP(S) domain, enc
 The app uses the URL fragment to choose its initial screen. A normal visit shows create/encrypt only. A visit with any fragment shows recover/decrypt only.
 
 The app sets `Cache-Control: no-store` in `static/_headers` and versions the `app.js` and `style.css` URLs from `index.html` so behavior changes are not hidden by stale browser caches.
+
+For local development, run:
+
+```text
+npm run dev
+```
+
+By default this prepares generated static files and serves `static/` at `http://127.0.0.1:8788/`.
 
 ## Recommended Workflow for a Future Release
 

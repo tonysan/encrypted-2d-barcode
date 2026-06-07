@@ -58,15 +58,13 @@ button:disabled {
   opacity: 0.55;
 }
 
-button.secondary,
-.file-button {
+button.secondary {
   border-color: var(--line);
   background: #fff;
   color: var(--text);
 }
 
-button.secondary:hover,
-.file-button:hover {
+button.secondary:hover {
   border-color: #aeb8c4;
   background: #f4f6f8;
 }
@@ -115,6 +113,23 @@ button.danger {
   color: var(--muted);
   font-size: 0.9rem;
   white-space: nowrap;
+}
+
+.version {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.version a {
+  color: var(--accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.version a:hover {
+  color: var(--accent-dark);
+  text-decoration: underline;
 }
 
 .workspace {
@@ -217,8 +232,7 @@ textarea {
 
 textarea:focus,
 input:focus,
-button:focus-visible,
-.file-button:focus-within {
+button:focus-visible {
   outline: 3px solid rgba(11, 107, 203, 0.22);
   outline-offset: 2px;
 }
@@ -321,18 +335,34 @@ button:focus-visible,
   margin-top: 10px;
 }
 
-.payload-fallback {
-  overflow-wrap: anywhere;
-  color: var(--muted);
-  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
-  font-size: 0.78rem;
+.code-actions {
+  justify-content: center;
 }
 
-.fallback-label {
+.tech-details {
   margin-top: 14px;
   color: var(--muted);
-  font-size: 0.82rem;
+}
+
+.tech-details summary {
+  cursor: pointer;
   font-weight: 700;
+}
+
+.compact-field {
+  margin-top: 12px;
+}
+
+.copy-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.copy-row input {
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.84rem;
 }
 
 .hidden {

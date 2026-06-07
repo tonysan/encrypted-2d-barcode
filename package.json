@@ -5,6 +5,7 @@
   "description": "Static browser app for encrypting arbitrary strings into printable 2D barcode payloads.",
   "scripts": {
     "build": "node scripts/build.js",
+    "dev": "node scripts/dev.js",
     "test": "node tests/run-tests.js"
   },
   "license": "Apache-2.0",

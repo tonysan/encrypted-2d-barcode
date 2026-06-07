@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const app = require("../static/app.js");
+const packageJson = require("../package.json");
 
 async function rejectsWith(fn, pattern) {
   let rejected = false;
@@ -23,16 +24,32 @@ async function testBase64Url() {
 
 async function testPlainPayload() {
   const payload = app.encodePlainPayload("line one\nline two");
-  assert.equal(payload.startsWith(app.PLAIN_PREFIX), true);
+  assert.equal(payload, "line one\nline two");
   assert.equal(app.decodePlainPayload(payload), "line one\nline two");
   assert.equal(app.detectPayload(payload).kind, "plain");
 }
 
+async function testLegacyPlainPayload() {
+  const payload = app.PLAIN_PREFIX + app.base64UrlEncode(app.utf8Encode("legacy plain"));
+  assert.equal(app.decodePlainPayload(payload), "legacy plain");
+  assert.equal(app.detectPayload(payload).kind, "plain");
+}
+
 async function testUrlPayloadExtraction() {
-  const payload = app.encodePlainPayload("from url");
+  const payload = app.PLAIN_PREFIX + app.base64UrlEncode(app.utf8Encode("from url"));
   const url = `https://codes.example/recover/#${encodeURIComponent(payload)}`;
   assert.equal(app.extractPayloadFromInput(url), payload);
   assert.equal(app.detectPayload(url).kind, "plain");
+}
+
+async function testRawUrlCanBePlainPayload() {
+  const payload = "https://example.com/raw/plain/string";
+  assert.equal(app.extractPayloadFromInput(payload), payload);
+  assert.equal(app.decodePlainPayload(app.detectPayload(payload).payload), payload);
+}
+
+async function testAppVersionMatchesPackage() {
+  assert.equal(app.APP_VERSION, packageJson.version);
 }
 
 async function testPlainQrContentUsesPayloadOnly() {
@@ -173,7 +190,10 @@ async function run() {
   const tests = [
     testBase64Url,
     testPlainPayload,
+    testLegacyPlainPayload,
     testUrlPayloadExtraction,
+    testRawUrlCanBePlainPayload,
+    testAppVersionMatchesPackage,
     testPlainQrContentUsesPayloadOnly,
     testQrContentUsesDeployedDomainUrl,
     testQrContentUsesLocalHttpUrl,
