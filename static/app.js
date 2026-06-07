@@ -1,7 +1,7 @@
 (function initRuntime(root) {
   "use strict";
 
-  const APP_VERSION = "0.1.1-dev";
+  const APP_VERSION = "0.1.2-dev";
   const ENCRYPTED_PREFIX = "ERK1.";
   const PLAIN_PREFIX = "ERP1.";
   const PASSWORD_ALG = "PBES2-HS512+A256KW";
@@ -967,22 +967,35 @@
     return root.location.href.split("#")[0] + "#" + encodeURIComponent(payload);
   }
 
-  function shouldEncodeQrAsUrl(locationLike) {
+  function getRecoveryBaseUrl(locationLike) {
     const locationValue = locationLike || root.location;
-    return Boolean(
-      locationValue &&
-      (locationValue.protocol === "https:" || locationValue.protocol === "http:") &&
-      locationValue.origin &&
-      locationValue.origin !== "null"
-    );
+    if (!locationValue || !locationValue.href) {
+      return "";
+    }
+    let url;
+    try {
+      url = new URL(locationValue.href);
+    } catch (error) {
+      return "";
+    }
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      return "";
+    }
+    url.hash = "";
+    url.search = "";
+    return url.toString();
+  }
+
+  function shouldEncodeQrAsUrl(locationLike) {
+    return getRecoveryBaseUrl(locationLike) !== "";
   }
 
   function buildQrContent(payload, locationLike) {
-    if (!shouldEncodeQrAsUrl(locationLike)) {
+    const baseUrl = getRecoveryBaseUrl(locationLike);
+    if (!baseUrl) {
       return payload;
     }
-    const locationValue = locationLike || root.location;
-    return locationValue.href.split("#")[0] + "#" + encodeURIComponent(payload);
+    return baseUrl + "#" + encodeURIComponent(payload);
   }
 
   async function copyText(text, fallbackTextArea) {
@@ -1118,6 +1131,9 @@
     function renderOutput(payload, modeLabel) {
       latestPayload = payload;
       latestQrContent = buildQrContent(payload);
+      if (shouldEncodeQrAsUrl() && latestQrContent === payload) {
+        throw new Error("Hosted QR generation must include this page URL.");
+      }
       elements.payloadOutput.value = payload;
       elements.payloadFallback.textContent = latestQrContent;
       elements.codeModeLabel.textContent = modeLabel;
@@ -1400,6 +1416,7 @@
     splitCompactJwe,
     buildFragmentUrl,
     determineInitialView,
+    getRecoveryBaseUrl,
     shouldEncodeQrAsUrl,
     buildQrContent,
     shortChecksum,

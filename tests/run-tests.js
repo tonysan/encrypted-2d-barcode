@@ -42,7 +42,31 @@ async function testQrContentUsesHostedUrl() {
     origin: "https://codes.example",
     href: "https://codes.example/app/index.html?ignored=true#old"
   });
-  assert.equal(qrContent, `https://codes.example/app/index.html?ignored=true#${encodeURIComponent(payload)}`);
+  assert.equal(qrContent, `https://codes.example/app/index.html#${encodeURIComponent(payload)}`);
+}
+
+async function testQrContentUsesDeployedDomainUrl() {
+  const payload = app.ENCRYPTED_PREFIX + "sample";
+  const qrContent = app.buildQrContent(payload, {
+    href: "https://encrypt.tonysan.fun/"
+  });
+  assert.equal(qrContent, `https://encrypt.tonysan.fun/#${encodeURIComponent(payload)}`);
+}
+
+async function testQrContentUsesLocalHttpUrl() {
+  const payload = app.ENCRYPTED_PREFIX + "sample";
+  const qrContent = app.buildQrContent(payload, {
+    href: "http://127.0.0.1:8788/"
+  });
+  assert.equal(qrContent, `http://127.0.0.1:8788/#${encodeURIComponent(payload)}`);
+}
+
+async function testQrContentUsesHostedUrlWithoutOriginProperty() {
+  const payload = app.encodePlainPayload("hosted qr");
+  const qrContent = app.buildQrContent(payload, {
+    href: "https://codes.example/app/#old"
+  });
+  assert.equal(qrContent, `https://codes.example/app/#${encodeURIComponent(payload)}`);
 }
 
 async function testQrContentUsesPayloadForLocalFile() {
@@ -130,6 +154,9 @@ async function run() {
     testPlainPayload,
     testUrlPayloadExtraction,
     testQrContentUsesHostedUrl,
+    testQrContentUsesDeployedDomainUrl,
+    testQrContentUsesLocalHttpUrl,
+    testQrContentUsesHostedUrlWithoutOriginProperty,
     testQrContentUsesPayloadForLocalFile,
     testInitialViewFromFragment,
     testPassphraseJweRoundtrip,
