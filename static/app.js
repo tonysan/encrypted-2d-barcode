@@ -1,7 +1,6 @@
 (function initRuntime(root) {
   "use strict";
 
-  const APP_VERSION = "0.1.4-dev";
   const ENCRYPTED_PREFIX = "ERK1.";
   const PLAIN_PREFIX = "ERP1.";
   const PASSWORD_ALG = "PBES2-HS512+A256KW";
@@ -630,7 +629,6 @@
       fragmentBanner: $("fragment-banner")
     };
 
-    elements.appVersion.textContent = "v" + APP_VERSION;
     elements.originLabel.textContent = root.location && root.location.origin !== "null"
       ? root.location.origin
       : "local file";
@@ -853,7 +851,6 @@
   }
 
   const api = {
-    APP_VERSION,
     ENCRYPTED_PREFIX,
     PLAIN_PREFIX,
     base64UrlEncode,
