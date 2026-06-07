@@ -13,16 +13,6 @@
   const QR_ERROR_CORRECTION = "M";
   const QR_MARGIN_MODULES = 4;
   const QR_MODULE_PIXELS = 10;
-  const COMMON_PASSWORDS = new Set([
-    "password",
-    "password1",
-    "password123",
-    "1234567890123456",
-    "qwertyqwertyqwerty",
-    "letmeinletmein",
-    "correcthorsebatterystaple"
-  ]);
-
   function getPackageVersion() {
     if (root.ERK_PACKAGE && root.ERK_PACKAGE.version) {
       return root.ERK_PACKAGE.version;
@@ -130,31 +120,6 @@
       return utf8Decode(base64UrlDecode(payload.slice(PLAIN_PREFIX.length)));
     }
     return String(payload);
-  }
-
-  function validatePassphraseForCreation(passphrase) {
-    const value = String(passphrase || "");
-    if (value.length < 16) {
-      return "Use at least 16 characters.";
-    }
-    if (/^\d+$/.test(value)) {
-      return "Use more than digits only.";
-    }
-    if (/^(.)\1+$/.test(value)) {
-      return "Avoid repeated single-character passphrases.";
-    }
-    for (let size = 2; size <= 8; size += 1) {
-      if (value.length % size === 0) {
-        const part = value.slice(0, size);
-        if (part.repeat(value.length / size) === value) {
-          return "Avoid obvious repeated patterns.";
-        }
-      }
-    }
-    if (COMMON_PASSWORDS.has(value.trim().toLowerCase())) {
-      return "Use a less common passphrase.";
-    }
-    return "";
   }
 
   async function derivePbes2Key(passphrase, salt, iterations) {
@@ -762,10 +727,6 @@
         }
         const passphrase = elements.createPassphrase.value;
         const confirm = elements.createPassphraseConfirm.value;
-        const passphraseError = validatePassphraseForCreation(passphrase);
-        if (passphraseError) {
-          throw new Error(passphraseError);
-        }
         if (passphrase !== confirm) {
           throw new Error("Passphrase confirmation does not match.");
         }
@@ -788,11 +749,7 @@
         if (detected.kind === "webauthn") {
           throw new Error("WebAuthn PRF recovery is scaffolded for a later phase.");
         }
-        const passphrase = elements.recoverPassphrase.value;
-        if (!passphrase) {
-          throw new Error("Enter the passphrase.");
-        }
-        startProtectedDisplay(await decryptPassphraseJwe(detected.compactJwe, passphrase));
+        startProtectedDisplay(await decryptPassphraseJwe(detected.compactJwe, elements.recoverPassphrase.value));
       } catch (error) {
         showError(elements.recoverError, error);
       }
@@ -886,7 +843,6 @@
     utf8Decode,
     encodePlainPayload,
     decodePlainPayload,
-    validatePassphraseForCreation,
     encryptPassphraseJwe,
     decryptPassphraseJwe,
     extractPayloadFromInput,

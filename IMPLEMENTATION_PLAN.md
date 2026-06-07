@@ -353,8 +353,8 @@ Tasks:
 - Add plain mode with strong unsafe-for-secrets labeling.
 - Add passphrase mode using JWE Compact.
 - Implement the narrow JWE Compact profile with Web Crypto.
-- Enforce passphrase creation rules.
-- Allow decryption attempts for older payloads even if the passphrase would fail current creation rules.
+- Recommend 16 or more passphrase characters in the UI without enforcing strength rules.
+- Allow encryption and decryption with any exact passphrase the user chooses.
 - Add collapsed technical payload and QR-content fields with copy actions.
 - Add manual paste recovery.
 - Add protected canvas display.

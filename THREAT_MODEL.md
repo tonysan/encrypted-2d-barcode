@@ -25,7 +25,7 @@ The design assumes:
 - The browser correctly enforces WebAuthn origin/RP ID behavior.
 - The user is running the expected static app files.
 - The user's browser, operating system, and extensions are not compromised.
-- The user chooses a strong passphrase when using passphrase mode.
+- The user chooses an appropriate passphrase when using passphrase mode.
 - The user keeps any printed encrypted barcode and unlock factor available.
 
 ## Protects Against
@@ -68,7 +68,7 @@ Plain mode must be visually distinct from encrypted modes and must warn that it 
 
 Passphrase mode depends on passphrase strength and the correctness of the strict JWE profile implementation.
 
-Creation should reject clearly weak passphrases. Recovery should still allow attempts for older payloads even if the passphrase would fail current creation policy.
+The UI recommends 16 or more characters, but creation accepts any passphrase the user chooses.
 
 Wrong passphrases and corrupted payloads must fail authenticated decryption without displaying garbage plaintext.
 

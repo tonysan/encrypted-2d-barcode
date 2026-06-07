@@ -108,6 +108,9 @@ async function testPassphraseJweRoundtrip() {
   const detected = app.detectPayload(app.ENCRYPTED_PREFIX + compact);
   assert.equal(detected.kind, "passphrase");
   assert.equal(await app.decryptPassphraseJwe(compact, "this is a long passphrase"), "secret string");
+
+  const emptyPassphraseCompact = await app.encryptPassphraseJwe("empty passphrase secret", "", { p2c: 1500 });
+  assert.equal(await app.decryptPassphraseJwe(emptyPassphraseCompact, ""), "empty passphrase secret");
 }
 
 async function testWrongPassphrase() {
@@ -180,12 +183,6 @@ async function testPassphraseQrRenderPlan() {
   assert.equal(plan.pixelSize, (plan.moduleCount + plan.marginModules * 2) * plan.modulePixels);
 }
 
-async function testPassphrasePolicy() {
-  assert.match(app.validatePassphraseForCreation("short"), /16/);
-  assert.match(app.validatePassphraseForCreation("1111111111111111"), /digits/);
-  assert.equal(app.validatePassphraseForCreation("five random words would be better"), "");
-}
-
 async function run() {
   const tests = [
     testBase64Url,
@@ -206,8 +203,7 @@ async function run() {
     testUnsupportedHeaderRejection,
     testRemoteHeaderRejection,
     testQrLibraryMatrix,
-    testPassphraseQrRenderPlan,
-    testPassphrasePolicy
+    testPassphraseQrRenderPlan
   ];
   for (const test of tests) {
     await test();
