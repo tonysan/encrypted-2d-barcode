@@ -13,7 +13,8 @@ scan barcode -> copy encrypted string -> command-line decryption -> string
 
 After:
 open webapp -> enter string -> choose unlock mode -> get 2D barcode
-open webapp -> scan/paste barcode -> unlock locally -> get string
+scan encrypted barcode with the OS/browser scanner -> open webapp -> unlock locally -> get string
+or open webapp -> paste payload -> unlock locally -> get string
 ```
 
 The value of the app is usability:
@@ -35,7 +36,7 @@ The value of the app is usability:
 - Encrypt an arbitrary user-provided string locally.
 - Decrypt an encrypted payload locally.
 - Generate a 2D barcode for the output.
-- Scan a 2D barcode using the camera.
+- Support recovery from URL fragments opened by an external QR scanner.
 - Paste payload manually as a fallback.
 - Support three modes:
   - Plain, no encryption.
@@ -53,6 +54,7 @@ The value of the app is usability:
 - Analytics or telemetry.
 - Cloud functions.
 - CDN runtime scripts.
+- In-app camera scanning.
 - Multi-recipient or hybrid unlock.
 - Multi-chunk barcode sets.
 - Custom encryption envelope format.
@@ -84,7 +86,7 @@ Mode behavior:
 ### Decrypt Flow
 
 ```text
-2D barcode scan or manual paste
+URL-fragment payload or manual paste
   -> payload detection
   -> local browser unlock
   -> authenticated decryption
@@ -220,7 +222,6 @@ These rules should be treated as non-negotiable:
 - No secret string is sent to any server.
 - No passphrase is sent to any server.
 - No WebAuthn PRF output is sent to any server.
-- No camera image is sent to any server.
 - No decrypted plaintext is sent to any server.
 - No secret is written to localStorage or sessionStorage.
 - Wrong passphrase/key fails authenticated decryption.
@@ -241,7 +242,7 @@ Rules for v1:
 - Prefer browser Web Crypto over third-party crypto implementations.
 - Implement only the strict JWE Compact profile needed by the app.
 - Do not include a general-purpose JOSE/JWT/JWE dependency unless a later security review shows it is safer than the narrow implementation.
-- Keep barcode generation and scanning dependencies small, local, pinned, and documented.
+- Keep barcode generation dependencies small, local, pinned, and documented.
 - No CDN runtime scripts.
 - No remote fonts.
 - No service worker in v1.
@@ -304,7 +305,6 @@ Keep the app small and auditable.
     webcrypto.ts
     webauthn-prf.ts
     barcode-generate.ts
-    barcode-scan.ts
     url-fragment.ts
     errors.ts
   /tests
@@ -395,24 +395,22 @@ Exit criteria:
 - User can create a passphrase-encrypted string and print or save a barcode.
 - User can still recover manually from the text payload.
 
-### Phase 3: Barcode Scanning
+### Phase 3: External QR Recovery
 
-Goal: complete the usability loop.
+Goal: complete the usability loop without in-app camera access.
 
 Tasks:
 
-- Add native `BarcodeDetector` scanning where browsers support it.
-- Add camera scanning flow where the browser context allows camera access.
-- Add image upload scanning flow where native detection supports image sources.
-- Preserve manual paste fallback.
+- Ensure encrypted QR codes can be scanned by the device OS/browser and opened as app URLs.
+- Preserve manual paste recovery.
 - Detect supported app markers.
-- Show clear error for unknown barcode content.
-- Recover passphrase JWE from a scanned barcode.
+- Show clear error for unknown pasted or fragment content.
+- Recover passphrase JWE from a URL fragment.
 
 Exit criteria:
 
-- User can create a barcode, reload the app, scan it, enter passphrase, and recover the string.
-- Browsers without native scan support still recover through manual paste.
+- User can create an encrypted barcode, scan it with the device OS/browser, open the app URL, enter passphrase, and recover the string.
+- Payload-only codes still recover through manual paste.
 
 ### Phase 4: URL Fragment Mode
 
@@ -630,7 +628,7 @@ Risks:
 
 - Malicious or compromised dependency can steal strings, passphrases, PRF output, or decrypted plaintext.
 - Large crypto libraries increase review surface.
-- Barcode scanner dependencies may touch camera frames and browser APIs.
+- QR generation dependencies may add unexpected data-handling or network behavior.
 - Build tooling compromise can produce a malicious release artifact.
 - Hosted deployment compromise can serve JavaScript different from the reviewed release.
 

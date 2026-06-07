@@ -15,6 +15,7 @@ static/index.html
 static/app.js
 static/style.css
 static/_headers
+static/vendor/qrcode-generator.js
 static/LICENSE
 ```
 
@@ -36,7 +37,7 @@ Root directory: blank or /
 
 The build command runs local tests and verifies the required files in `static/`. Cloudflare should serve only `static/`, not the repository root.
 
-Generated QR codes are domain-aware. When the app runs on an HTTP(S) domain, the QR contains the current page URL with the recovery payload in the fragment. Create production QR codes from the final custom domain, not the temporary `pages.dev` preview, if you want scans to open the custom domain.
+Encrypted QR codes are domain-aware. When the app runs on an HTTP(S) domain, encrypted QR codes contain the current page URL with the recovery payload in the fragment. Create production encrypted QR codes from the final custom domain, not the temporary `pages.dev` preview, if you want scans to open the custom domain. Plain mode QR codes contain only the plain payload.
 
 The app uses the URL fragment to choose its initial screen. A normal visit shows create/encrypt only. A visit with any fragment shows recover/decrypt only.
 
@@ -60,7 +61,7 @@ The app sets `Cache-Control: no-store` in `static/_headers` and versions the `ap
 
 Passphrase mode should be designed to work from a local or offline static copy where browser APIs allow.
 
-Camera scanning depends on browser support for camera access and native `BarcodeDetector`. It may not work from local files or in all browsers. Manual paste recovery must remain available.
+Manual paste recovery remains available for payload-only codes and local/offline use.
 
 WebAuthn is not implemented yet and will require a compatible secure origin when added.
 
@@ -88,7 +89,7 @@ Starting point:
 Content-Security-Policy: default-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'
 Referrer-Policy: no-referrer
 X-Content-Type-Options: nosniff
-Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=()
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
 ```
 
 If inline scripts or styles are used during early development, the CSP must be revisited before release.

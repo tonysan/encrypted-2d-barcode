@@ -2,9 +2,9 @@
 
 ## Summary
 
-This app is planned as a static browser-based tool for turning an arbitrary string into a plain or encrypted 2D barcode, then recovering the string locally by scanning or pasting the barcode payload.
+This app is planned as a static browser-based tool for turning an arbitrary string into a plain or encrypted 2D barcode, then recovering the string locally from a URL fragment or pasted payload.
 
-The main security property is local-only handling: the server should only serve static files and should never receive secrets, passphrases, WebAuthn PRF output, camera images, encrypted payloads, or decrypted strings.
+The main security property is local-only handling: the server should only serve static files and should never receive secrets, passphrases, WebAuthn PRF output, encrypted payloads, or decrypted strings.
 
 ## Assets
 
@@ -15,7 +15,6 @@ Assets that need protection:
 - WebAuthn PRF output.
 - Derived encryption keys.
 - Decrypted plaintext.
-- Camera frames containing barcode payloads.
 - Encrypted payload before the user intentionally prints, saves, or shares it.
 
 ## Trust Assumptions
@@ -105,7 +104,7 @@ Risks:
 - Malicious dependency exfiltrates secrets.
 - Compromised dependency update changes crypto behavior.
 - Broad crypto library adds unused algorithm and parser surface.
-- Barcode scanner dependency mishandles camera frames or network APIs.
+- QR generator dependency adds unexpected network or data-handling behavior.
 - Build system creates an artifact that differs from reviewed source.
 - Hosted deployment serves different files than a reviewed release.
 

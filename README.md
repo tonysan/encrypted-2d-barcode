@@ -11,7 +11,7 @@ scan barcode -> copy encrypted string -> command-line decryption -> string
 
 After:
 open webapp -> enter string -> choose unlock mode -> get 2D barcode
-open webapp -> scan/paste barcode -> unlock locally -> get string
+scan encrypted QR -> open webapp -> unlock locally -> get string
 ```
 
 ## Project Status
@@ -22,8 +22,7 @@ This repository now has a no-build static scaffold with the Phase 1-4 core start
 - Passphrase encrypted payload creation and recovery.
 - Strict-profile JWE Compact implementation on browser Web Crypto.
 - Local QR-compatible 2D barcode generation.
-- Native `BarcodeDetector` scan hooks where the browser supports them.
-- Manual paste fallback.
+- Manual paste recovery.
 - URL-fragment import/export.
 
 WebAuthn PRF is intentionally still scaffolded for a later phase.
@@ -38,7 +37,7 @@ See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the phased build plan.
 - No backend, database, accounts, telemetry, analytics, CDN runtime scripts, or server-side recovery.
 - Encrypt and decrypt locally in the browser.
 - Generate a QR-compatible 2D barcode from the output payload.
-- Recover by scanning where supported or by pasting the payload in the same static app.
+- Recover encrypted codes by opening the generated QR URL, or by pasting a payload in the same static app.
 - Support passphrase recovery from a local or offline copy where browser APIs allow.
 - Support WebAuthn PRF later as an advanced browser-native mode on compatible HTTPS origins.
 
@@ -102,7 +101,7 @@ The app is designed so that:
 - Passphrases are used locally.
 - WebAuthn PRF output is used locally.
 - Encryption and decryption happen locally.
-- Barcode scanning happens locally.
+- Payload parsing and recovery happen locally.
 - Payloads are not sent to a server.
 - Decrypted strings are not sent to a server.
 - Secrets are not stored in localStorage or sessionStorage.
@@ -126,13 +125,19 @@ Build output directory: static
 
 The build script validates tests and required static deployment files, then copies the pinned `qrcode-generator` browser file into `static/vendor/` for same-origin deployment.
 
-When the app is opened from an HTTP(S) domain, generated QR codes contain the current page URL plus the payload in the fragment:
+When the app is opened from an HTTP(S) domain, encrypted QR codes contain the current page URL plus the payload in the fragment:
 
 ```text
 https://your-domain.example/#ERK1.<compact-jwe>
 ```
 
-When opened from a local file or non-web origin, generated QR codes contain the payload only:
+Plain mode QR codes always contain only the plain payload:
+
+```text
+ERP1.<base64url-string>
+```
+
+When opened from a local file or non-web origin, encrypted QR codes contain the payload only:
 
 ```text
 ERK1.<compact-jwe>

@@ -287,8 +287,7 @@ button:focus-visible,
 }
 
 .output-area,
-.protected-area,
-.scanner {
+.protected-area {
   margin-top: 20px;
 }
 
@@ -336,33 +335,6 @@ button:focus-visible,
   font-weight: 700;
 }
 
-.scan-video {
-  width: 100%;
-  max-height: 280px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #101820;
-}
-
-.file-button {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 42px;
-  border-radius: 6px;
-  padding: 0 14px;
-  font-weight: 650;
-  cursor: pointer;
-}
-
-.file-button input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
 .hidden {
   display: none !important;
 }
@@ -392,8 +364,7 @@ button:focus-visible,
     flex-direction: column;
   }
 
-  .actions button,
-  .file-button {
+  .actions button {
     width: 100%;
   }
 }

@@ -35,14 +35,14 @@ async function testUrlPayloadExtraction() {
   assert.equal(app.detectPayload(url).kind, "plain");
 }
 
-async function testQrContentUsesHostedUrl() {
+async function testPlainQrContentUsesPayloadOnly() {
   const payload = app.encodePlainPayload("hosted qr");
   const qrContent = app.buildQrContent(payload, {
     protocol: "https:",
     origin: "https://codes.example",
     href: "https://codes.example/app/index.html?ignored=true#old"
   });
-  assert.equal(qrContent, `https://codes.example/app/index.html#${encodeURIComponent(payload)}`);
+  assert.equal(qrContent, payload);
 }
 
 async function testQrContentUsesDeployedDomainUrl() {
@@ -62,7 +62,7 @@ async function testQrContentUsesLocalHttpUrl() {
 }
 
 async function testQrContentUsesHostedUrlWithoutOriginProperty() {
-  const payload = app.encodePlainPayload("hosted qr");
+  const payload = app.ENCRYPTED_PREFIX + "sample";
   const qrContent = app.buildQrContent(payload, {
     href: "https://codes.example/app/#old"
   });
@@ -174,7 +174,7 @@ async function run() {
     testBase64Url,
     testPlainPayload,
     testUrlPayloadExtraction,
-    testQrContentUsesHostedUrl,
+    testPlainQrContentUsesPayloadOnly,
     testQrContentUsesDeployedDomainUrl,
     testQrContentUsesLocalHttpUrl,
     testQrContentUsesHostedUrlWithoutOriginProperty,

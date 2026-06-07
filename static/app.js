@@ -1,7 +1,7 @@
 (function initRuntime(root) {
   "use strict";
 
-  const APP_VERSION = "0.1.3-dev";
+  const APP_VERSION = "0.1.4-dev";
   const ENCRYPTED_PREFIX = "ERK1.";
   const PLAIN_PREFIX = "ERP1.";
   const PASSWORD_ALG = "PBES2-HS512+A256KW";
@@ -542,10 +542,6 @@
     return locationValue && locationValue.hash && locationValue.hash.length > 1 ? "recover" : "create";
   }
 
-  function buildFragmentUrl(payload) {
-    return root.location.href.split("#")[0] + "#" + encodeURIComponent(payload);
-  }
-
   function getRecoveryBaseUrl(locationLike) {
     const locationValue = locationLike || root.location;
     if (!locationValue || !locationValue.href) {
@@ -570,6 +566,9 @@
   }
 
   function buildQrContent(payload, locationLike) {
+    if (!payload.startsWith(ENCRYPTED_PREFIX)) {
+      return payload;
+    }
     const baseUrl = getRecoveryBaseUrl(locationLike);
     if (!baseUrl) {
       return payload;
@@ -590,22 +589,6 @@
       return;
     }
     throw new Error("Clipboard is unavailable in this context.");
-  }
-
-  function canUseBarcodeDetector() {
-    return typeof root.BarcodeDetector === "function";
-  }
-
-  async function detectBarcodeFromSource(source) {
-    if (!canUseBarcodeDetector()) {
-      throw new Error("Native barcode scanning is not available in this browser. Paste the payload manually.");
-    }
-    const detector = new root.BarcodeDetector({ formats: ["qr_code"] });
-    const codes = await detector.detect(source);
-    if (!codes.length) {
-      throw new Error("No QR code found.");
-    }
-    return codes[0].rawValue;
   }
 
   function initDom() {
@@ -644,13 +627,7 @@
       hideSecretButton: $("hide-secret-button"),
       copySecretButton: $("copy-secret-button"),
       hideCountdown: $("hide-countdown"),
-      fragmentBanner: $("fragment-banner"),
-      clearFragmentButton: $("clear-fragment-button"),
-      startScanButton: $("start-scan-button"),
-      stopScanButton: $("stop-scan-button"),
-      scanVideo: $("scan-video"),
-      imageScanInput: $("image-scan-input"),
-      scanStatus: $("scan-status")
+      fragmentBanner: $("fragment-banner")
     };
 
     elements.appVersion.textContent = "v" + APP_VERSION;
@@ -664,8 +641,6 @@
     let hideTimer = 0;
     let countdownTimer = 0;
     let hideAt = 0;
-    let scanStream = null;
-    let scanLoopActive = false;
 
     function currentCreateMode() {
       const checked = document.querySelector("input[name='create-mode']:checked");
@@ -710,7 +685,7 @@
     function renderOutput(payload, modeLabel) {
       latestPayload = payload;
       latestQrContent = buildQrContent(payload);
-      if (shouldEncodeQrAsUrl() && latestQrContent === payload) {
+      if (payload.startsWith(ENCRYPTED_PREFIX) && shouldEncodeQrAsUrl() && latestQrContent === payload) {
         throw new Error("Hosted QR generation must include this page URL.");
       }
       elements.payloadOutput.value = payload;
@@ -800,94 +775,6 @@
       }
     }
 
-    async function startCameraScan() {
-      clearError(elements.recoverError);
-      elements.scanStatus.textContent = "";
-      try {
-        if (!canUseBarcodeDetector()) {
-          throw new Error("Native barcode scanning is not available in this browser. Paste the payload manually.");
-        }
-        if (!root.navigator || !root.navigator.mediaDevices || !root.navigator.mediaDevices.getUserMedia) {
-          throw new Error("Camera access is not available in this browser context.");
-        }
-        scanStream = await root.navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-          audio: false
-        });
-        elements.scanVideo.srcObject = scanStream;
-        await elements.scanVideo.play();
-        setHidden(elements.scanVideo, false);
-        elements.startScanButton.disabled = true;
-        elements.stopScanButton.disabled = false;
-        scanLoopActive = true;
-        const detector = new root.BarcodeDetector({ formats: ["qr_code"] });
-        const loop = async () => {
-          if (!scanLoopActive) {
-            return;
-          }
-          try {
-            const codes = await detector.detect(elements.scanVideo);
-            if (codes.length) {
-              elements.recoverPayload.value = codes[0].rawValue;
-              updateRecoverSummary();
-              stopCameraScan();
-              elements.scanStatus.textContent = "QR code scanned.";
-              return;
-            }
-          } catch (error) {
-            elements.scanStatus.textContent = error.message;
-          }
-          root.requestAnimationFrame(loop);
-        };
-        loop();
-      } catch (error) {
-        showError(elements.recoverError, error);
-      }
-    }
-
-    function stopCameraScan() {
-      scanLoopActive = false;
-      if (scanStream) {
-        for (const track of scanStream.getTracks()) {
-          track.stop();
-        }
-      }
-      scanStream = null;
-      elements.scanVideo.srcObject = null;
-      setHidden(elements.scanVideo, true);
-      elements.startScanButton.disabled = false;
-      elements.stopScanButton.disabled = true;
-    }
-
-    async function scanImageFile(file) {
-      clearError(elements.recoverError);
-      elements.scanStatus.textContent = "";
-      try {
-        if (!file) {
-          return;
-        }
-        let source;
-        if (root.createImageBitmap) {
-          source = await root.createImageBitmap(file);
-        } else {
-          source = await new Promise((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve(img);
-            img.onerror = reject;
-            img.src = URL.createObjectURL(file);
-          });
-        }
-        const value = await detectBarcodeFromSource(source);
-        elements.recoverPayload.value = value;
-        updateRecoverSummary();
-        elements.scanStatus.textContent = "QR code scanned from image.";
-      } catch (error) {
-        showError(elements.recoverError, error);
-      } finally {
-        elements.imageScanInput.value = "";
-      }
-    }
-
     document.querySelectorAll("input[name='create-mode']").forEach((input) => {
       input.addEventListener("change", updateModeUi);
     });
@@ -911,7 +798,7 @@
     });
     elements.copyUrlButton.addEventListener("click", async () => {
       try {
-        await copyText(buildFragmentUrl(latestPayload), elements.payloadOutput);
+        await copyText(latestQrContent, elements.payloadOutput);
       } catch (error) {
         showError(elements.createError, error);
       }
@@ -945,16 +832,6 @@
       } catch (error) {
         showError(elements.recoverError, error);
       }
-    });
-    elements.startScanButton.addEventListener("click", startCameraScan);
-    elements.stopScanButton.addEventListener("click", stopCameraScan);
-    elements.imageScanInput.addEventListener("change", () => scanImageFile(elements.imageScanInput.files[0]));
-    elements.clearFragmentButton.addEventListener("click", () => {
-      if (root.history && root.location) {
-        root.history.replaceState(null, "", root.location.href.split("#")[0]);
-      }
-      setHidden(elements.fragmentBanner, true);
-      setAppView("create");
     });
     root.addEventListener("blur", hideSecret);
     document.addEventListener("visibilitychange", () => {
@@ -993,7 +870,6 @@
     parseProtectedHeader,
     validatePassphraseHeader,
     splitCompactJwe,
-    buildFragmentUrl,
     determineInitialView,
     getRecoveryBaseUrl,
     shouldEncodeQrAsUrl,
