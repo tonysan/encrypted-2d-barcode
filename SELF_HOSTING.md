@@ -15,7 +15,6 @@ static/index.html
 static/app.js
 static/style.css
 static/_headers
-static/version.js
 static/vendor/qrcode-generator.js
 static/LICENSE
 ```
@@ -42,7 +41,7 @@ Encrypted QR codes are domain-aware. When the app runs on an HTTP(S) domain, enc
 
 The app uses the URL fragment to choose its initial screen. A normal visit shows create/encrypt only. A visit with any fragment shows recover/decrypt only.
 
-The app sets `Cache-Control: no-store` in `static/_headers` and versions the `app.js` and `style.css` URLs from `index.html` so behavior changes are not hidden by stale browser caches.
+The app sets `Cache-Control: no-store` in `static/_headers` so behavior changes are not hidden by stale browser caches.
 
 For local development, run:
 
@@ -110,5 +109,4 @@ A release should make it possible to verify:
 - Which files are included.
 - Which dependency versions are included.
 - Which checksums match the release.
-- Which build/version hash is shown by the app.
 - That no runtime network calls are needed after static assets load.

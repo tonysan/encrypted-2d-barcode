@@ -176,7 +176,6 @@ Planned rules:
 - Use no remote fonts.
 - Avoid service workers in v1.
 - Publish release checksums.
-- Display app version/build hash.
 
 ## License
 

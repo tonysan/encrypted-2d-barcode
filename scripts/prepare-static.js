@@ -4,7 +4,6 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const staticDir = path.join(root, "static");
 const staticVendorDir = path.join(staticDir, "vendor");
-const packageJson = require(path.join(root, "package.json"));
 
 function prepareStatic() {
   const qrVendorSource = path.join(root, "node_modules", "qrcode-generator", "qrcode.js");
@@ -16,15 +15,6 @@ function prepareStatic() {
 
   fs.mkdirSync(staticVendorDir, { recursive: true });
   fs.copyFileSync(qrVendorSource, qrVendorTarget);
-
-  const versionSource = [
-    "window.ERK_PACKAGE = Object.freeze({",
-    `  version: ${JSON.stringify(packageJson.version)},`,
-    `  repository: ${JSON.stringify("https://github.com/tonysan/encrypted-2d-barcode")}`,
-    "});",
-    ""
-  ].join("\n");
-  fs.writeFileSync(path.join(staticDir, "version.js"), versionSource);
 }
 
 if (require.main === module) {
@@ -37,7 +27,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  packageJson,
   prepareStatic,
   root,
   staticDir

@@ -40,7 +40,6 @@ build/Release
 # Dependency directories
 node_modules/
 jspm_packages/
-static/version.js
 static/vendor/
 
 # Snowpack dependency directory (https://snowpack.dev/)

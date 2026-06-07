@@ -1,7 +1,6 @@
 (function initRuntime(root) {
   "use strict";
 
-  const APP_VERSION = getPackageVersion();
   const ENCRYPTED_PREFIX = "ERK1.";
   const PLAIN_PREFIX = "ERP1.";
   const PASSWORD_ALG = "PBES2-HS512+A256KW";
@@ -13,20 +12,6 @@
   const QR_ERROR_CORRECTION = "M";
   const QR_MARGIN_MODULES = 4;
   const QR_MODULE_PIXELS = 10;
-  function getPackageVersion() {
-    if (root.ERK_PACKAGE && root.ERK_PACKAGE.version) {
-      return root.ERK_PACKAGE.version;
-    }
-    if (typeof require === "function") {
-      try {
-        return require("../package.json").version;
-      } catch (error) {
-        return "0.0.0";
-      }
-    }
-    return "0.0.0";
-  }
-
   function getCrypto() {
     if (root.crypto && root.crypto.subtle && root.crypto.getRandomValues) {
       return root.crypto;
@@ -581,7 +566,6 @@
   function initDom() {
     const $ = (id) => document.getElementById(id);
     const elements = {
-      appVersion: $("app-version"),
       originLabel: $("origin-label"),
       secretInput: $("secret-input"),
       createPassphrase: $("create-passphrase"),
@@ -834,7 +818,6 @@
   }
 
   const api = {
-    APP_VERSION,
     ENCRYPTED_PREFIX,
     PLAIN_PREFIX,
     base64UrlEncode,

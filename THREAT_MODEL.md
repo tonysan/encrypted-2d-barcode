@@ -118,7 +118,6 @@ Mitigations:
 - Avoid CDN runtime scripts.
 - Avoid service workers in v1.
 - Publish checksums.
-- Display app version/build hash.
 - Verify no runtime network calls during create/recover.
 
 ## Protected Display Risk

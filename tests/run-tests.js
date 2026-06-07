@@ -1,6 +1,5 @@
 const assert = require("node:assert/strict");
 const app = require("../static/app.js");
-const packageJson = require("../package.json");
 
 async function rejectsWith(fn, pattern) {
   let rejected = false;
@@ -46,10 +45,6 @@ async function testRawUrlCanBePlainPayload() {
   const payload = "https://example.com/raw/plain/string";
   assert.equal(app.extractPayloadFromInput(payload), payload);
   assert.equal(app.decodePlainPayload(app.detectPayload(payload).payload), payload);
-}
-
-async function testAppVersionMatchesPackage() {
-  assert.equal(app.APP_VERSION, packageJson.version);
 }
 
 async function testPlainQrContentUsesPayloadOnly() {
@@ -190,7 +185,6 @@ async function run() {
     testLegacyPlainPayload,
     testUrlPayloadExtraction,
     testRawUrlCanBePlainPayload,
-    testAppVersionMatchesPackage,
     testPlainQrContentUsesPayloadOnly,
     testQrContentUsesDeployedDomainUrl,
     testQrContentUsesLocalHttpUrl,

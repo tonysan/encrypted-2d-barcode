@@ -107,7 +107,6 @@ button.danger {
   color: var(--muted);
 }
 
-.version,
 .origin,
 .phase-badge {
   color: var(--muted);
@@ -115,19 +114,15 @@ button.danger {
   white-space: nowrap;
 }
 
-.version {
+.repo-link {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-}
-
-.version a {
   color: var(--accent);
   font-weight: 700;
   text-decoration: none;
 }
 
-.version a:hover {
+.repo-link:hover {
   color: var(--accent-dark);
   text-decoration: underline;
 }
@@ -380,7 +375,8 @@ button:focus-visible {
     display: block;
   }
 
-  .version {
+  .repo-link {
+    display: inline-block;
     margin-top: 10px;
   }
 

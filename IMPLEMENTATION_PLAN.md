@@ -247,7 +247,6 @@ Rules for v1:
 - No automated dependency update merges for security-sensitive packages.
 - Maintain a dependency inventory with source, version, license, checksum, and purpose.
 - Publish release checksums.
-- Display app version/build hash in the UI.
 
 Supply-chain tests should verify:
 
@@ -385,7 +384,7 @@ Tasks:
 - Add download/print support.
 - Show human-readable payload text as fallback.
 - Add basic print CSS.
-- Display app version and creation date near printed output.
+- Display creation date near printed output.
 
 Exit criteria:
 
@@ -503,7 +502,6 @@ Tasks:
 - Add recovery drill guide.
 - Add better error messages.
 - Add test vectors for JWE passphrase payloads.
-- Add app version/hash display in UI.
 
 Exit criteria:
 
@@ -637,7 +635,6 @@ Mitigations:
 - Avoid CDN runtime scripts.
 - Avoid service workers in v1.
 - Publish checksums for releases.
-- Show app version/build hash.
 - Verify no runtime network calls during create/recover.
 
 ## 13. Deferred Features
