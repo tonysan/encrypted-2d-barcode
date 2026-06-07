@@ -1,7 +1,7 @@
 (function initRuntime(root) {
   "use strict";
 
-  const APP_VERSION = "0.1.0-dev";
+  const APP_VERSION = "0.1.1-dev";
   const ENCRYPTED_PREFIX = "ERK1.";
   const PLAIN_PREFIX = "ERP1.";
   const PASSWORD_ALG = "PBES2-HS512+A256KW";

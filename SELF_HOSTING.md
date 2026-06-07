@@ -40,6 +40,8 @@ Generated QR codes are domain-aware. When the app runs on an HTTP(S) domain, the
 
 The app uses the URL fragment to choose its initial screen. A normal visit shows create/encrypt only. A visit with any fragment shows recover/decrypt only.
 
+The app sets `Cache-Control: no-store` in `static/_headers` and versions the `app.js` and `style.css` URLs from `index.html` so behavior changes are not hidden by stale browser caches.
+
 ## Recommended Workflow for a Future Release
 
 1. Download the release ZIP.

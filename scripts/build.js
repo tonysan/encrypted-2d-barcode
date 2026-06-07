@@ -30,8 +30,8 @@ for (const file of requiredFiles) {
 }
 
 const html = fs.readFileSync(path.join(staticDir, "index.html"), "utf8");
-if (!html.includes('href="./style.css"') || !html.includes('src="./app.js"')) {
-  console.error("static/index.html must reference ./style.css and ./app.js");
+if (!/href="\.\/style\.css(?:\?v=[^"]+)"/.test(html) || !/src="\.\/app\.js(?:\?v=[^"]+)"/.test(html)) {
+  console.error("static/index.html must reference ./style.css and ./app.js, optionally with version query strings");
   process.exit(1);
 }
 
