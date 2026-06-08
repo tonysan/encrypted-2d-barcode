@@ -20,7 +20,7 @@
       <section class="panel create-panel" aria-labelledby="create-title">
         <div class="panel-heading">
           <h2 id="create-title">Create</h2>
-          <span class="phase-badge">Phases 1-4</span>
+          <span class="phase-badge">Phases 1-6</span>
         </div>
 
         <fieldset class="mode-picker">
@@ -33,11 +33,40 @@
             <input type="radio" name="create-mode" value="passphrase" checked>
             <span>Passphrase Protected</span>
           </label>
-          <label class="disabled-choice">
-            <input type="radio" name="create-mode" value="webauthn" disabled>
+          <label>
+            <input type="radio" name="create-mode" value="webauthn">
             <span>WebAuthn PRF</span>
           </label>
         </fieldset>
+
+        <div class="webauthn-support" aria-labelledby="webauthn-support-title">
+          <div class="support-heading">
+            <h3 id="webauthn-support-title">WebAuthn PRF support</h3>
+            <button id="prf-probe-button" type="button" class="secondary">Run PRF Probe</button>
+          </div>
+          <dl class="support-grid">
+            <div>
+              <dt>Origin</dt>
+              <dd id="webauthn-origin-status">-</dd>
+            </div>
+            <div>
+              <dt>RP ID</dt>
+              <dd id="webauthn-rp-status">-</dd>
+            </div>
+            <div>
+              <dt>Secure context</dt>
+              <dd id="webauthn-secure-status">-</dd>
+            </div>
+            <div>
+              <dt>API</dt>
+              <dd id="webauthn-api-status">-</dd>
+            </div>
+            <div>
+              <dt>PRF probe</dt>
+              <dd id="webauthn-prf-status">Not run</dd>
+            </div>
+          </dl>
+        </div>
 
         <div id="plain-warning" class="warning hidden" role="status">
           Plain mode is not encrypted. Anyone who scans the code can read the string.
@@ -56,6 +85,16 @@
           <label class="field">
             <span>Confirm</span>
             <input id="create-passphrase-confirm" type="password" autocomplete="new-password" placeholder="Re-enter the passphrase">
+          </label>
+        </div>
+
+        <div id="webauthn-create-fields" class="webauthn-create-fields hidden">
+          <div class="notice" role="status">
+            Advanced mode creates one credential for this code and needs the same origin, RP ID, and credential to recover.
+          </div>
+          <label class="check-field">
+            <input id="webauthn-ack" type="checkbox">
+            <span>I understand this code depends on this WebAuthn credential and RP ID.</span>
           </label>
         </div>
 

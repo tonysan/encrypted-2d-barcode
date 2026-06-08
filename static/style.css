@@ -198,6 +198,66 @@ body[data-view="recover"] .workspace {
   color: var(--muted);
 }
 
+.webauthn-support {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 14px 0;
+  margin: 16px 0 4px;
+}
+
+.support-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.support-heading h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.support-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0 0;
+}
+
+.support-grid div {
+  min-width: 0;
+}
+
+.support-grid dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.support-grid dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.86rem;
+}
+
+.webauthn-create-fields {
+  margin-top: 14px;
+}
+
+.check-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.check-field input {
+  margin-top: 4px;
+}
+
 .field {
   display: grid;
   gap: 7px;
@@ -381,8 +441,14 @@ button:focus-visible {
   }
 
   .mode-picker,
-  .field-grid {
+  .field-grid,
+  .support-grid {
     grid-template-columns: 1fr;
+  }
+
+  .support-heading {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .actions {

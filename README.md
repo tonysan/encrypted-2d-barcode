@@ -1,6 +1,6 @@
 # Encrypted 2D Barcode
 
-A planned static web app for encrypting an arbitrary string locally and turning it into a printable or scannable 2D barcode.
+A static web app for encrypting an arbitrary string locally and turning it into a printable or scannable 2D barcode.
 
 The app is intended to replace a clumsy command-line recovery flow:
 
@@ -16,7 +16,7 @@ scan encrypted QR -> open webapp -> unlock locally -> get string
 
 ## Project Status
 
-This repository now has a no-build static scaffold with the Phase 1-4 core started:
+This repository now has a no-build static app with the Phase 1-6 core started:
 
 - Plain payload creation and recovery.
 - Passphrase encrypted payload creation and recovery.
@@ -24,8 +24,10 @@ This repository now has a no-build static scaffold with the Phase 1-4 core start
 - Local QR-compatible 2D barcode generation.
 - Manual paste recovery.
 - URL-fragment import/export.
+- WebAuthn PRF environment probe.
+- Advanced WebAuthn PRF encrypted payload creation and recovery.
 
-WebAuthn PRF is intentionally still scaffolded for a later phase.
+WebAuthn PRF still needs manual validation on the hosted HTTPS deployment before it should be trusted for real recovery workflows.
 
 The deployable browser app lives in [static/](static/). Repository root contains docs, tests, and project metadata.
 
@@ -72,20 +74,38 @@ enc = A256GCM
 
 Advanced encrypted mode for compatible browsers, authenticators, and HTTPS origins.
 
-Planned payload format:
+Payload format:
 
 ```text
 ERK1.<compact-jwe>
 ```
 
-The encrypted body is planned to use JWE Compact Serialization with:
+The encrypted body uses JWE Compact Serialization with:
 
 ```text
 alg = dir
 enc = A256GCM
 ```
 
-The direct encryption key is derived locally from WebAuthn PRF output using an app-defined profile. This mode is origin/RP ID bound and may become unrecoverable if the original origin, browser support, or credential is unavailable.
+The protected header stores only non-secret recovery metadata:
+
+```text
+app = erk-webauthn-prf-v1
+cid = base64url credential ID
+rp  = WebAuthn RP ID
+ps  = base64url random 32-byte PRF salt
+```
+
+The direct AES-GCM key is derived locally from `prf.results.first` using this HKDF-SHA-256 profile:
+
+```text
+IKM  = WebAuthn prf.results.first
+salt = UTF8("encrypted-2d-barcode WebAuthn PRF HKDF salt v1") || 0x00 || ps
+info = UTF8("ERK1 WebAuthn PRF A256GCM direct key v1") || 0x00 || UTF8(rp) || 0x00 || cid
+L    = 32 bytes
+```
+
+This mode is origin/RP ID bound and may become unrecoverable if the original origin, browser support, or credential is unavailable. The app creates one dedicated WebAuthn credential per generated code and stores no plaintext, PRF output, derived key, passphrase, or credential secret in browser storage.
 
 ## Data Format Direction
 
@@ -151,7 +171,7 @@ When opened from a local file or non-web origin, encrypted QR codes contain the 
 ERK1.<compact-jwe>
 ```
 
-For future WebAuthn PRF mode, create codes from the final stable custom HTTPS domain. WebAuthn recovery is origin/RP ID bound.
+For WebAuthn PRF mode, create codes from the final stable custom HTTPS domain. WebAuthn recovery is origin/RP ID bound.
 
 The page is mode-aware:
 

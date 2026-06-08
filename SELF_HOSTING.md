@@ -71,7 +71,7 @@ Passphrase mode should be designed to work from a local or offline static copy w
 
 Manual paste recovery remains available for payload-only codes and local/offline use.
 
-WebAuthn is not implemented yet and will require a compatible secure origin when added.
+WebAuthn PRF mode requires a compatible secure origin, browser, authenticator, and stable RP ID. Use the support panel and PRF probe on the hosted site before creating real WebAuthn-dependent payloads.
 
 ## WebAuthn PRF Hosting Warning
 
@@ -84,6 +84,7 @@ For long-lived WebAuthn PRF payloads:
 - Do not rely on a domain you may lose.
 - Run the WebAuthn PRF compatibility test before creating real payloads.
 - Test recovery before relying on a printed barcode.
+- Push small changes to the production branch, wait for Cloudflare Pages to deploy `static/`, then manually validate at the final custom domain.
 
 If the original origin, credential, browser support, or authenticator support is unavailable later, WebAuthn PRF recovery may fail.
 

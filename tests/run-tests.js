@@ -109,6 +109,123 @@ async function testPassphraseJweRoundtrip() {
   assert.equal(await app.decryptPassphraseJwe(shortPassphraseCompact, "x"), "short passphrase secret");
 }
 
+function fixedDirectHeader() {
+  const credentialId = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
+  const prfSalt = new Uint8Array(32);
+  for (let index = 0; index < prfSalt.length; index += 1) {
+    prfSalt[index] = index;
+  }
+  return app.makeWebAuthnProtectedHeader(credentialId, "encrypt.tonysan.fun", prfSalt);
+}
+
+function zeroKey() {
+  return new Uint8Array(32);
+}
+
+function fixedIv() {
+  const iv = new Uint8Array(12);
+  for (let index = 0; index < iv.length; index += 1) {
+    iv[index] = 0xa0 + index;
+  }
+  return iv;
+}
+
+async function testDirectJweShape() {
+  const header = fixedDirectHeader();
+  const compact = await app.encryptDirectJwe("direct secret", zeroKey(), header, { iv: fixedIv() });
+  const parts = compact.split(".");
+  assert.equal(parts.length, 5);
+  assert.equal(parts[1], "");
+  const parsed = app.parseProtectedHeader(parts[0]);
+  assert.equal(parsed.alg, "dir");
+  assert.equal(parsed.enc, "A256GCM");
+  assert.equal(parsed.app, "erk-webauthn-prf-v1");
+  assert.equal(parsed.cid, header.cid);
+  assert.equal(parsed.rp, "encrypt.tonysan.fun");
+  assert.equal(parsed.ps, header.ps);
+}
+
+async function testDirectHeaderValidation() {
+  const header = fixedDirectHeader();
+  const metadata = app.validateDirectHeader(header);
+  assert.equal(metadata.credentialId.length, 8);
+  assert.equal(metadata.prfSalt.length, 32);
+  assert.equal(metadata.rpId, "encrypt.tonysan.fun");
+
+  assert.throws(
+    () => app.validateDirectHeader({ ...header, kid: "https://example.com/key" }),
+    /Unsupported JWE protected header/
+  );
+  assert.throws(
+    () => app.validateDirectHeader({ alg: "dir", enc: "A256GCM" }),
+    /Unsupported WebAuthn PRF profile/
+  );
+}
+
+async function testDirectJweRoundtrip() {
+  const compact = await app.encryptDirectJwe("direct secret", zeroKey(), fixedDirectHeader(), { iv: fixedIv() });
+  assert.equal(await app.decryptDirectJwe(compact, zeroKey()), "direct secret");
+}
+
+async function testWrongDirectKey() {
+  const compact = await app.encryptDirectJwe("direct secret", zeroKey(), fixedDirectHeader(), { iv: fixedIv() });
+  const wrongKey = new Uint8Array(32);
+  wrongKey.fill(1);
+  await rejectsWith(
+    () => app.decryptDirectJwe(compact, wrongKey),
+    /Wrong direct key|corrupted/
+  );
+}
+
+async function testCorruptedDirectCiphertext() {
+  const compact = await app.encryptDirectJwe("direct secret", zeroKey(), fixedDirectHeader(), { iv: fixedIv() });
+  const parts = compact.split(".");
+  parts[3] = (parts[3][0] === "A" ? "B" : "A") + parts[3].slice(1);
+  await rejectsWith(
+    () => app.decryptDirectJwe(parts.join("."), zeroKey()),
+    /Wrong direct key|corrupted/
+  );
+}
+
+async function testDirectEncryptedKeySegmentRejection() {
+  const compact = await app.encryptDirectJwe("direct secret", zeroKey(), fixedDirectHeader(), { iv: fixedIv() });
+  const parts = compact.split(".");
+  parts[1] = "AA";
+  await rejectsWith(
+    () => app.decryptDirectJwe(parts.join("."), zeroKey()),
+    /Direct JWE must not contain an encrypted key/
+  );
+}
+
+async function testWebAuthnPayloadDetection() {
+  const compact = await app.encryptDirectJwe("direct secret", zeroKey(), fixedDirectHeader(), { iv: fixedIv() });
+  const detected = app.detectPayload(app.ENCRYPTED_PREFIX + compact);
+  assert.equal(detected.kind, "webauthn");
+  assert.equal(detected.label, "WebAuthn PRF encrypted payload");
+}
+
+async function testWebAuthnHkdfProfile() {
+  const header = fixedDirectHeader();
+  const metadata = app.validateDirectHeader(header);
+  const prfOutput = new Uint8Array(32);
+  prfOutput.fill(0x42);
+  const first = await app.deriveWebAuthnDirectKeyBytes(prfOutput, metadata);
+  const second = await app.deriveWebAuthnDirectKeyBytes(prfOutput, metadata);
+  assert.equal(first.length, 32);
+  assert.deepEqual(first, second);
+
+  const changedHeader = app.makeWebAuthnProtectedHeader(
+    metadata.credentialId,
+    "example.com",
+    metadata.prfSalt
+  );
+  const changed = await app.deriveWebAuthnDirectKeyBytes(
+    prfOutput,
+    app.validateDirectHeader(changedHeader)
+  );
+  assert.notDeepEqual(first, changed);
+}
+
 async function testEmptyPassphraseRejection() {
   await rejectsWith(
     () => app.encryptPassphraseJwe("secret string", "", { p2c: 1500 }),
@@ -218,6 +335,14 @@ async function run() {
     testQrContentUsesPayloadForLocalFile,
     testInitialViewFromFragment,
     testPassphraseJweRoundtrip,
+    testDirectJweShape,
+    testDirectHeaderValidation,
+    testDirectJweRoundtrip,
+    testWrongDirectKey,
+    testCorruptedDirectCiphertext,
+    testDirectEncryptedKeySegmentRejection,
+    testWebAuthnPayloadDetection,
+    testWebAuthnHkdfProfile,
     testEmptyPassphraseRejection,
     testWrongPassphrase,
     testCorruptedPayload,

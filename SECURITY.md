@@ -2,7 +2,7 @@
 
 ## Current Status
 
-This repository has an early no-build static app scaffold. It is not production-ready and has not had an external security review.
+This repository has an early no-build static app. It is not production-ready and has not had an external security review.
 
 Do not rely on this repository for storing or recovering important secrets until a reviewed release exists.
 
@@ -36,23 +36,39 @@ The planned app cannot protect users from:
 - Broken or unavailable WebAuthn PRF support.
 - Destroyed, unreadable, or unavailable printed barcodes without backup copies.
 
-## Planned Cryptography Profile
+## Cryptography Profile
 
-Passphrase mode should use JSON Web Encryption Compact Serialization with:
+Passphrase mode uses JSON Web Encryption Compact Serialization with:
 
 ```text
 alg = PBES2-HS512+A256KW
 enc = A256GCM
 ```
 
-WebAuthn PRF mode should use JWE Compact Serialization with:
+WebAuthn PRF mode uses JWE Compact Serialization with:
 
 ```text
 alg = dir
 enc = A256GCM
 ```
 
-The WebAuthn PRF mode requires an app-defined profile for deriving the direct encryption key from PRF output. That profile must be documented and tested before the mode is considered usable.
+The WebAuthn PRF protected header stores only non-secret recovery metadata:
+
+```text
+app = erk-webauthn-prf-v1
+cid = base64url credential ID
+rp  = WebAuthn RP ID
+ps  = base64url random 32-byte PRF salt
+```
+
+The direct key is derived locally from `prf.results.first` with HKDF-SHA-256:
+
+```text
+IKM  = WebAuthn prf.results.first
+salt = UTF8("encrypted-2d-barcode WebAuthn PRF HKDF salt v1") || 0x00 || ps
+info = UTF8("ERK1 WebAuthn PRF A256GCM direct key v1") || 0x00 || UTF8(rp) || 0x00 || cid
+L    = 32 bytes
+```
 
 Unsupported algorithms, unsupported headers, remote key references, compression, and unreviewed JWE behavior must fail closed.
 
