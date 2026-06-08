@@ -11,6 +11,7 @@
    *   btoa/atob, not a universal base64url API.
    */
 
+  // Configs
   const ENCRYPTED_PREFIX = "ERK1.";
   const PLAIN_PREFIX = "ERP1.";
   const PASSWORD_ALG = "PBES2-HS512+A256KW";
@@ -34,6 +35,92 @@
   const WEBAUTHN_HINTS = ["hybrid", "client-device", "security-key"];
   const PASSKEY_LABEL = "Encrypted 2D Barcode";
   const PASSKEY_USER_ID = "encrypted-2d-barcode-passkey-v1";
+  const DOWNLOAD_FILENAME = "encrypted-2d-barcode.png";
+
+  // User-facing messages
+  const MSG_EMPTY_PASSPHRASE = "Passphrase cannot be empty.";
+  const MSG_WRONG_PASSPHRASE = "Wrong passphrase or corrupted payload.";
+  const MSG_EMPTY_PAYLOAD = "Enter a payload first.";
+  const MSG_NO_CLIPBOARD = "Clipboard is unavailable in this context.";
+  const MSG_HOSTED_QR_URL_REQUIRED = "Hosted QR generation must include this page URL.";
+  const MSG_EMPTY_SECRET = "Enter a string first.";
+  const MSG_PASSPHRASE_MISMATCH = "Passphrase confirmation does not match.";
+  const MSG_PASSKEY_ACK_REQUIRED = "Confirm the passkey recovery dependency first.";
+  const MSG_PLAIN_MODE_WARNING = "Plain mode is not encrypted. Anyone who scans the code can read the string.";
+  const MSG_WEBAUTHN_MODE_NOTICE = "Passkey mode is advanced. Use the browser prompt to choose this device, a phone, or a security key. Each code gets a new encryption key.";
+  const MSG_WEBAUTHN_SETUP_FAILED = "Passkey setup failed on this site. I switched back to passphrase mode.";
+  const MSG_WEBAUTHN_SETUP_CANCELLED = "Passkey setup was not completed or is not supported here. I switched back to passphrase mode.";
+  const MSG_WEBAUTHN_SETUP_GENERIC = "Passkey setup failed. I switched back to passphrase mode.";
+  const MSG_WEBAUTHN_RECOVERY_DIFFERENT_SITE = "This code was created for a different site. Open it from the original site and try again.";
+  const MSG_WEBAUTHN_RECOVERY_FAILED = "Passkey recovery failed. Use the same passkey setup on the original site.";
+  const MSG_WEBAUTHN_RECOVERY_GENERIC = "Passkey recovery failed.";
+  const MSG_COPY_SUCCESS = "content is copied to clipboard";
+  const MSG_TRUNCATED_OUTPUT = "[Output truncated on canvas. Use Copy if needed.]";
+  const MSG_WAITING_FOR_PAYLOAD = "Waiting for payload.";
+  const MSG_UNSUPPORTED_PAYLOAD_TYPE = "Unsupported or malformed payload.";
+  const MSG_PLAIN_UNENCRYPTED = "Plain unencrypted payload";
+  const MSG_PASSPHRASE_ENCRYPTED = "Passphrase encrypted payload";
+  const MSG_WEBAUTHN_ENCRYPTED = "Passkey encrypted payload";
+  const MSG_PLAIN_MODE_LABEL = "Plain unencrypted code";
+  const MSG_PASSPHRASE_MODE_LABEL = "Passphrase encrypted code";
+  const MSG_WEBAUTHN_MODE_LABEL = "Passkey encrypted code";
+  const MSG_LOCAL_FILE = "local file";
+  const MSG_YES = "Yes";
+  const MSG_NO = "No";
+  const MSG_UNAVAILABLE = "Unavailable";
+  const MSG_CHECKSUM_PREFIX = "Checksum ";
+  const MSG_HIDE_COUNTDOWN_PREFIX = "Hides in ";
+  const MSG_HIDE_COUNTDOWN_SUFFIX = "s";
+  const MSG_PRF_CHECKING = "Checking site passkey";
+  const MSG_PRF_SUCCEEDED = "Succeeded for this code";
+  const MSG_PRF_FAILED = "Failed; passphrase selected";
+  const MSG_CLEAR_BUTTON = "Clear";
+  const MSG_CONFIRM_BUTTON = "Confirm";
+
+  // Internal error messages
+  const MSG_INVALID_BASE64URL = "Invalid base64url value.";
+  const MSG_MALFORMED_HEADER = "Malformed JWE protected header.";
+  const MSG_UNSUPPORTED_HEADER = "Unsupported JWE protected header.";
+  const MSG_UNSUPPORTED_ALG = "Unsupported JWE algorithm.";
+  const MSG_UNSUPPORTED_ENC = "Unsupported JWE encryption method.";
+  const MSG_UNSUPPORTED_P2C = "Unsupported JWE PBES2 iteration count.";
+  const MSG_UNSUPPORTED_P2C_OPTION = "Unsupported PBES2 iteration count.";
+  const MSG_UNSUPPORTED_WEBAUTHN = "Unsupported WebAuthn PRF profile.";
+  const MSG_MALFORMED_WEBAUTHN = "Malformed WebAuthn PRF header.";
+  const MSG_MALFORMED_CREDENTIAL_ID = "Malformed WebAuthn credential ID.";
+  const MSG_MALFORMED_PRF_SALT = "Malformed WebAuthn PRF salt.";
+  const MSG_EXPECTED_JWE = "Expected JWE Compact Serialization.";
+  const MSG_DIRECT_NO_ENCRYPTED_KEY = "Direct JWE must not contain an encrypted key.";
+  const MSG_WRONG_DIRECT_KEY = "Wrong direct key or corrupted payload.";
+  const MSG_INVALID_RP_ID = "Invalid WebAuthn RP ID.";
+  const MSG_NO_CRYPTO = "Web Crypto is not available.";
+  const MSG_EXPECTED_BINARY = "Expected binary data.";
+  const MSG_NO_QR_LIB = "QR code library is not loaded.";
+  const MSG_UNSUPPORTED_PAYLOAD = "Unsupported encrypted payload.";
+  const MSG_NO_STORAGE = "Passkey mode needs browser storage for non-secret passkey metadata.";
+  const MSG_WEBAUTHN_SECURE_CONTEXT = "WebAuthn PRF requires a browser secure context.";
+  const MSG_WEBAUTHN_API_UNAVAILABLE = "WebAuthn APIs are not available in this browser.";
+  const MSG_WEBAUTHN_RP_UNAVAILABLE = "WebAuthn RP ID is unavailable for this page.";
+  const MSG_WEBAUTHN_CREDENTIAL_CREATION = "Browser did not return a WebAuthn credential.";
+  const MSG_WEBAUTHN_CREDENTIAL_REQUEST = "Browser did not return a WebAuthn assertion.";
+  const MSG_WEBAUTHN_DIFFERENT_CREDENTIAL = "Browser returned a different WebAuthn credential.";
+  const MSG_WEBAUTHN_NO_PRF_RESULT = "Authenticator did not return a WebAuthn PRF result.";
+  const MSG_WEBAUTHN_INVALID_PRF_OUTPUT = "Authenticator returned an invalid WebAuthn PRF result.";
+  const MSG_WEBAUTHN_PRF_DISABLED = "Authenticator did not enable WebAuthn PRF for this credential.";
+  const MSG_WEBAUTHN_WRONG_CREDENTIAL = "Wrong WebAuthn credential or corrupted payload.";
+  const MSG_WEBAUTHN_DIFFERENT_RP = "This WebAuthn code was created for RP ID ";
+  const MSG_WEBAUTHN_DIFFERENT_RP_PAGE = ", but this page is ";
+  const MSG_INVALID_DIRECT_KEY_SIZE = "Direct JWE key must be 256 bits.";
+  const MSG_INVALID_IV_SIZE = "AES-GCM IV must be 96 bits.";
+  const MSG_INVALID_PRF_OUTPUT_SIZE = "WebAuthn PRF output must be 256 bits.";
+  const MSG_INVALID_PRF_SALT_SIZE = "WebAuthn PRF salt must be 256 bits.";
+  const MSG_WEBAUTHN_CREDENTIAL_CREATION_FAILED = "WebAuthn credential creation failed: ";
+  const MSG_WEBAUTHN_CREDENTIAL_REQUEST_FAILED = "WebAuthn credential request failed: ";
+  const MSG_EXISTING_PASSKEY_REQUEST_FAILED = "Existing passkey request failed: ";
+  const MSG_WEBAUTHN_REQUEST_CANCELLED = "request was cancelled, timed out, or the credential is unavailable";
+  const MSG_WEBAUTHN_ORIGIN_NOT_ALLOWED = "this origin or RP ID is not allowed";
+  const MSG_WEBAUTHN_PRF_NOT_SUPPORTED = "the requested WebAuthn PRF extension is not supported";
+  const MSG_WEBAUTHN_AUTHENTICATOR_REJECTED = "the authenticator rejected this credential request";
 
   // Web Crypto is the security boundary. Node's webcrypto fallback lets tests
   // exercise the same API shape without adding a crypto dependency.
@@ -44,7 +131,7 @@
     if (typeof require === "function") {
       return require("node:crypto").webcrypto;
     }
-    throw new Error("Web Crypto is not available.");
+    throw new Error(MSG_NO_CRYPTO);
   }
 
   function utf8Encode(value) {
@@ -65,7 +152,7 @@
     if (ArrayBuffer.isView(value)) {
       return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
     }
-    throw new Error("Expected binary data.");
+    throw new Error(MSG_EXPECTED_BINARY);
   }
 
   // Standard base64 bridge, not a custom base64 codec. Browser btoa accepts a
@@ -113,10 +200,10 @@
       return new Uint8Array();
     }
     if (typeof value !== "string" || value.length === 0) {
-      throw new Error("Invalid base64url value.");
+      throw new Error(MSG_INVALID_BASE64URL);
     }
     if (!/^[A-Za-z0-9_-]+$/.test(value) || value.includes("=")) {
-      throw new Error("Invalid base64url value.");
+      throw new Error(MSG_INVALID_BASE64URL);
     }
     const padLength = (4 - (value.length % 4)) % 4;
     return base64ToBytes(value.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat(padLength));
@@ -165,7 +252,7 @@
   function normalizePassphrase(passphrase) {
     const value = passphrase == null ? "" : String(passphrase);
     if (value.length === 0) {
-      throw new Error("Passphrase cannot be empty.");
+      throw new Error(MSG_EMPTY_PASSPHRASE);
     }
     return value;
   }
@@ -221,7 +308,7 @@
       value.endsWith(".") ||
       !/^[a-z0-9.-]+$/.test(value)
     ) {
-      throw new Error("Invalid WebAuthn RP ID.");
+      throw new Error(MSG_INVALID_RP_ID);
     }
     return value;
   }
@@ -257,10 +344,10 @@
     try {
       header = JSON.parse(raw);
     } catch (error) {
-      throw new Error("Malformed JWE protected header.");
+      throw new Error(MSG_MALFORMED_HEADER);
     }
     if (!header || typeof header !== "object" || Array.isArray(header)) {
-      throw new Error("Malformed JWE protected header.");
+      throw new Error(MSG_MALFORMED_HEADER);
     }
     return header;
   }
@@ -272,17 +359,17 @@
     const allowed = new Set(["alg", "enc", "p2c", "p2s"]);
     for (const key of Object.keys(header)) {
       if (!allowed.has(key)) {
-        throw new Error("Unsupported JWE protected header.");
+        throw new Error(MSG_UNSUPPORTED_HEADER);
       }
     }
     if (header.alg !== PASSWORD_ALG) {
-      throw new Error("Unsupported JWE algorithm.");
+      throw new Error(MSG_UNSUPPORTED_ALG);
     }
     if (header.enc !== CONTENT_ALG) {
-      throw new Error("Unsupported JWE encryption method.");
+      throw new Error(MSG_UNSUPPORTED_ENC);
     }
     if (!Number.isInteger(header.p2c) || header.p2c < 1000 || header.p2c > MAX_P2C) {
-      throw new Error("Unsupported JWE PBES2 iteration count.");
+      throw new Error(MSG_UNSUPPORTED_P2C);
     }
     base64UrlDecode(header.p2s);
   }
@@ -293,28 +380,28 @@
     const allowed = new Set(["alg", "enc", "app", "cid", "rp", "ps"]);
     for (const key of Object.keys(header)) {
       if (!allowed.has(key)) {
-        throw new Error("Unsupported JWE protected header.");
+        throw new Error(MSG_UNSUPPORTED_HEADER);
       }
     }
     if (header.alg !== DIRECT_ALG) {
-      throw new Error("Unsupported JWE algorithm.");
+      throw new Error(MSG_UNSUPPORTED_ALG);
     }
     if (header.enc !== CONTENT_ALG) {
-      throw new Error("Unsupported JWE encryption method.");
+      throw new Error(MSG_UNSUPPORTED_ENC);
     }
     if (header.app !== WEBAUTHN_PROFILE) {
-      throw new Error("Unsupported WebAuthn PRF profile.");
+      throw new Error(MSG_UNSUPPORTED_WEBAUTHN);
     }
     if (typeof header.cid !== "string" || typeof header.ps !== "string" || typeof header.rp !== "string") {
-      throw new Error("Malformed WebAuthn PRF header.");
+      throw new Error(MSG_MALFORMED_WEBAUTHN);
     }
     const credentialId = base64UrlDecode(header.cid);
     if (credentialId.length === 0) {
-      throw new Error("Malformed WebAuthn credential ID.");
+      throw new Error(MSG_MALFORMED_CREDENTIAL_ID);
     }
     const prfSalt = base64UrlDecode(header.ps);
     if (prfSalt.length !== WEBAUTHN_PRF_SALT_BYTES) {
-      throw new Error("Malformed WebAuthn PRF salt.");
+      throw new Error(MSG_MALFORMED_PRF_SALT);
     }
     return {
       credentialId,
@@ -329,7 +416,7 @@
   function splitCompactJwe(compactJwe) {
     const parts = compactJwe.split(".");
     if (parts.length !== 5) {
-      throw new Error("Expected JWE Compact Serialization.");
+      throw new Error(MSG_EXPECTED_JWE);
     }
     return {
       protectedSegment: parts[0],
@@ -349,7 +436,7 @@
     const crypto = getCrypto();
     const p2c = options && options.p2c ? options.p2c : DEFAULT_P2C;
     if (!Number.isInteger(p2c) || p2c < 1000 || p2c > MAX_P2C) {
-      throw new Error("Unsupported PBES2 iteration count.");
+      throw new Error(MSG_UNSUPPORTED_P2C_OPTION);
     }
     const p2s = randomBytes(16);
     const iv = randomBytes(12);
@@ -416,7 +503,7 @@
         ["decrypt"]
       );
     } catch (error) {
-      throw new Error("Wrong passphrase or corrupted payload.");
+      throw new Error(MSG_WRONG_PASSPHRASE);
     }
     try {
       const plaintext = await crypto.subtle.decrypt(
@@ -431,7 +518,7 @@
       );
       return utf8Decode(new Uint8Array(plaintext));
     } catch (error) {
-      throw new Error("Wrong passphrase or corrupted payload.");
+      throw new Error(MSG_WRONG_PASSPHRASE);
     }
   }
 
@@ -445,7 +532,7 @@
     }
     const keyBytes = toUint8Array(keyMaterial);
     if (keyBytes.length !== AES_256_KEY_BYTES) {
-      throw new Error("Direct JWE key must be 256 bits.");
+      throw new Error(MSG_INVALID_DIRECT_KEY_SIZE);
     }
     return getCrypto().subtle.importKey(
       "raw",
@@ -461,7 +548,7 @@
     validateDirectHeader(header);
     const iv = options && options.iv ? toUint8Array(options.iv) : randomBytes(AES_GCM_IV_BYTES);
     if (iv.length !== AES_GCM_IV_BYTES) {
-      throw new Error("AES-GCM IV must be 96 bits.");
+      throw new Error(MSG_INVALID_IV_SIZE);
     }
     const key = await importAesGcmKey(keyMaterial, ["encrypt"]);
     const protectedSegment = base64UrlEncode(utf8Encode(stringifyHeader(header)));
@@ -490,7 +577,7 @@
     const crypto = getCrypto();
     const parts = splitCompactJwe(compactJwe);
     if (parts.encryptedKeySegment !== "") {
-      throw new Error("Direct JWE must not contain an encrypted key.");
+      throw new Error(MSG_DIRECT_NO_ENCRYPTED_KEY);
     }
     const header = parseProtectedHeader(parts.protectedSegment);
     validateDirectHeader(header);
@@ -511,7 +598,7 @@
       );
       return utf8Decode(new Uint8Array(plaintext));
     } catch (error) {
-      throw new Error("Wrong direct key or corrupted payload.");
+      throw new Error(MSG_WRONG_DIRECT_KEY);
     }
   }
 
@@ -541,7 +628,7 @@
     const locationValue = locationLike || root.location;
     const origin = locationValue && locationValue.origin && locationValue.origin !== "null"
       ? locationValue.origin
-      : "local file";
+      : MSG_LOCAL_FILE;
     return {
       origin,
       rpId: getCurrentRpId(locationValue),
@@ -593,7 +680,7 @@
   function rememberPasskeyCredential(rpId, credentialIdBase64Url) {
     const storage = getPasskeyStorage();
     if (!storage) {
-      throw new Error("Passkey mode needs browser storage for non-secret passkey metadata.");
+      throw new Error(MSG_NO_STORAGE);
     }
     base64UrlDecode(credentialIdBase64Url);
     storage.setItem(PASSKEY_CREDENTIAL_STORAGE_KEY, JSON.stringify({
@@ -605,13 +692,13 @@
 
   function assertWebAuthnAvailable(rpId) {
     if (!root.isSecureContext) {
-      throw new Error("WebAuthn PRF requires a browser secure context.");
+      throw new Error(MSG_WEBAUTHN_SECURE_CONTEXT);
     }
     if (!isWebAuthnApiAvailable()) {
-      throw new Error("WebAuthn APIs are not available in this browser.");
+      throw new Error(MSG_WEBAUTHN_API_UNAVAILABLE);
     }
     if (!rpId) {
-      throw new Error("WebAuthn RP ID is unavailable for this page.");
+      throw new Error(MSG_WEBAUTHN_RP_UNAVAILABLE);
     }
   }
 
@@ -620,16 +707,16 @@
       return error && error.message ? error.message : String(error);
     }
     if (error.name === "NotAllowedError") {
-      return "request was cancelled, timed out, or the credential is unavailable";
+      return MSG_WEBAUTHN_REQUEST_CANCELLED;
     }
     if (error.name === "SecurityError") {
-      return "this origin or RP ID is not allowed";
+      return MSG_WEBAUTHN_ORIGIN_NOT_ALLOWED;
     }
     if (error.name === "NotSupportedError") {
-      return "the requested WebAuthn PRF extension is not supported";
+      return MSG_WEBAUTHN_PRF_NOT_SUPPORTED;
     }
     if (error.name === "InvalidStateError") {
-      return "the authenticator rejected this credential request";
+      return MSG_WEBAUTHN_AUTHENTICATOR_REJECTED;
     }
     return error.message || error.name;
   }
@@ -648,7 +735,7 @@
     }
     const bytes = toUint8Array(first);
     if (bytes.length !== AES_256_KEY_BYTES) {
-      throw new Error("Authenticator returned an invalid WebAuthn PRF result.");
+      throw new Error(MSG_WEBAUTHN_INVALID_PRF_OUTPUT);
     }
     return bytes;
   }
@@ -759,11 +846,11 @@
         makeWebAuthnPrfCreationOptions(prfSalt, normalizedRpId)
       );
       if (!credential || !credential.rawId) {
-        throw new Error("Browser did not return a WebAuthn credential.");
+        throw new Error(MSG_WEBAUTHN_CREDENTIAL_CREATION);
       }
       return credential;
     } catch (error) {
-      throw new Error("WebAuthn credential creation failed: " + describeWebAuthnDomError(error) + ".");
+      throw new Error(MSG_WEBAUTHN_CREDENTIAL_CREATION_FAILED + describeWebAuthnDomError(error) + ".");
     }
   }
 
@@ -775,25 +862,25 @@
         makeBoundWebAuthnPrfRequestOptions(credentialIdBase64Url, prfSalt, normalizedRpId)
       );
       if (!assertion || !assertion.rawId) {
-        throw new Error("Browser did not return a WebAuthn assertion.");
+        throw new Error(MSG_WEBAUTHN_CREDENTIAL_REQUEST);
       }
       const returnedCredentialId = base64UrlEncode(toUint8Array(assertion.rawId));
       if (returnedCredentialId !== credentialIdBase64Url) {
-        throw new Error("Browser returned a different WebAuthn credential.");
+        throw new Error(MSG_WEBAUTHN_DIFFERENT_CREDENTIAL);
       }
       const prfOutput = getPrfFirstResult(assertion);
       if (!prfOutput) {
-        throw new Error("Authenticator did not return a WebAuthn PRF result.");
+        throw new Error(MSG_WEBAUTHN_NO_PRF_RESULT);
       }
       return prfOutput;
     } catch (error) {
-      if (error && error.message && error.message.startsWith("Authenticator did not")) {
+      if (error && error.message && error.message.startsWith(MSG_WEBAUTHN_NO_PRF_RESULT)) {
         throw error;
       }
-      if (error && error.message && error.message.startsWith("Browser returned")) {
+      if (error && error.message && error.message.startsWith(MSG_WEBAUTHN_DIFFERENT_CREDENTIAL)) {
         throw error;
       }
-      throw new Error("WebAuthn credential request failed: " + describeWebAuthnDomError(error) + ".");
+      throw new Error(MSG_WEBAUTHN_CREDENTIAL_REQUEST_FAILED + describeWebAuthnDomError(error) + ".");
     }
   }
 
@@ -805,22 +892,22 @@
         makeDiscoverableWebAuthnPrfRequestOptions(prfSalt, normalizedRpId)
       );
       if (!assertion || !assertion.rawId) {
-        throw new Error("Browser did not return a WebAuthn assertion.");
+        throw new Error(MSG_WEBAUTHN_CREDENTIAL_REQUEST);
       }
       const credentialIdBase64Url = base64UrlEncode(toUint8Array(assertion.rawId));
       const prfOutput = getPrfFirstResult(assertion);
       if (!prfOutput) {
-        throw new Error("Authenticator did not return a WebAuthn PRF result.");
+        throw new Error(MSG_WEBAUTHN_NO_PRF_RESULT);
       }
       return {
         credentialIdBase64Url,
         prfOutput
       };
     } catch (error) {
-      if (error && error.message && error.message.startsWith("Authenticator did not")) {
+      if (error && error.message && error.message.startsWith(MSG_WEBAUTHN_NO_PRF_RESULT)) {
         throw error;
       }
-      throw new Error("Existing passkey request failed: " + describeWebAuthnDomError(error) + ".");
+      throw new Error(MSG_EXISTING_PASSKEY_REQUEST_FAILED + describeWebAuthnDomError(error) + ".");
     }
   }
 
@@ -833,12 +920,12 @@
     const crypto = getCrypto();
     const prfBytes = toUint8Array(prfOutput);
     if (prfBytes.length !== AES_256_KEY_BYTES) {
-      throw new Error("WebAuthn PRF output must be 256 bits.");
+      throw new Error(MSG_INVALID_PRF_OUTPUT_SIZE);
     }
     const credentialId = toUint8Array(metadata.credentialId);
     const prfSalt = toUint8Array(metadata.prfSalt);
     if (prfSalt.length !== WEBAUTHN_PRF_SALT_BYTES) {
-      throw new Error("WebAuthn PRF salt must be 256 bits.");
+      throw new Error(MSG_INVALID_PRF_SALT_SIZE);
     }
     const key = await crypto.subtle.importKey(
       "raw",
@@ -884,13 +971,13 @@
         prfOutput = await requestWebAuthnPrfOutput(credentialIdBase64Url, prfSalt, rpId);
       } else {
         if (!getPasskeyStorage()) {
-          throw new Error("Passkey mode needs browser storage for non-secret passkey metadata.");
+          throw new Error(MSG_NO_STORAGE);
         }
         const credential = await createWebAuthnPrfCredential(prfSalt, rpId);
         credentialIdBase64Url = base64UrlEncode(toUint8Array(credential.rawId));
         const prfEnabled = getPrfEnabledResult(credential);
         if (prfEnabled === false) {
-          throw new Error("Authenticator did not enable WebAuthn PRF for this credential.");
+          throw new Error(MSG_WEBAUTHN_PRF_DISABLED);
         }
         prfOutput = getPrfFirstResult(credential);
         if (!prfOutput) {
@@ -911,7 +998,7 @@
     const metadata = validateDirectHeader(header);
     const currentRpId = options && options.rpId ? normalizeRpId(options.rpId) : getCurrentRpId();
     if (currentRpId && currentRpId !== metadata.rpId) {
-      throw new Error("This WebAuthn code was created for RP ID " + metadata.rpId + ", but this page is " + currentRpId + ".");
+      throw new Error(MSG_WEBAUTHN_DIFFERENT_RP + metadata.rpId + MSG_WEBAUTHN_DIFFERENT_RP_PAGE + currentRpId + ".");
     }
     const prfOutput = await requestWebAuthnPrfOutput(
       metadata.credentialIdBase64Url,
@@ -922,7 +1009,7 @@
     try {
       return await decryptDirectJwe(compactJwe, directKey);
     } catch (error) {
-      throw new Error("Wrong WebAuthn credential or corrupted payload.");
+      throw new Error(MSG_WEBAUTHN_WRONG_CREDENTIAL);
     }
   }
 
@@ -933,7 +1020,7 @@
     const raw = String(input || "");
     const trimmed = raw.trim();
     if (!trimmed) {
-      throw new Error("Enter a payload first.");
+      throw new Error(MSG_EMPTY_PAYLOAD);
     }
     if (trimmed.startsWith(PLAIN_PREFIX) || trimmed.startsWith(ENCRYPTED_PREFIX)) {
       return trimmed;
@@ -968,7 +1055,7 @@
       return {
         kind: "plain",
         payload,
-        label: "Plain unencrypted payload"
+        label: MSG_PLAIN_UNENCRYPTED
       };
     }
     if (payload.startsWith(ENCRYPTED_PREFIX)) {
@@ -981,7 +1068,7 @@
           kind: "passphrase",
           payload,
           compactJwe,
-          label: "Passphrase encrypted payload"
+          label: MSG_PASSPHRASE_ENCRYPTED
         };
       }
       if (header.alg === DIRECT_ALG) {
@@ -990,15 +1077,15 @@
           kind: "webauthn",
           payload,
           compactJwe,
-          label: "Passkey encrypted payload"
+          label: MSG_WEBAUTHN_ENCRYPTED
         };
       }
-      throw new Error("Unsupported encrypted payload.");
+      throw new Error(MSG_UNSUPPORTED_PAYLOAD);
     }
     return {
       kind: "plain",
       payload,
-      label: "Plain unencrypted payload"
+      label: MSG_PLAIN_UNENCRYPTED
     };
   }
 
@@ -1022,7 +1109,7 @@
     if (typeof require === "function") {
       return require("qrcode-generator");
     }
-    throw new Error("QR code library is not loaded.");
+    throw new Error(MSG_NO_QR_LIB);
   }
 
   // Byte mode keeps arbitrary user strings and JWE payloads in one predictable
@@ -1136,7 +1223,7 @@
     }
     if (lines.length > maxLines) {
       ctx.fillStyle = "#b42318";
-      ctx.fillText("[Output truncated on canvas. Use Copy if needed.]", 28, height - 30);
+      ctx.fillText(MSG_TRUNCATED_OUTPUT, 28, height - 30);
     }
   }
 
@@ -1215,7 +1302,7 @@
       fallbackTextArea.setSelectionRange(0, 0);
       return;
     }
-    throw new Error("Clipboard is unavailable in this context.");
+    throw new Error(MSG_NO_CLIPBOARD);
   }
 
   /*
@@ -1272,7 +1359,7 @@
 
     elements.originLabel.textContent = root.location && root.location.origin !== "null"
       ? root.location.origin
-      : "local file";
+      : MSG_LOCAL_FILE;
 
     let latestPayload = "";
     let latestQrContent = "";
@@ -1314,13 +1401,13 @@
     }
 
     function yesNo(value) {
-      return value ? "Yes" : "No";
+      return value ? MSG_YES : MSG_NO;
     }
 
     function updateWebAuthnStatus(prfStatus) {
       const env = getWebAuthnEnvironment();
       elements.webauthnOriginStatus.textContent = env.origin;
-      elements.webauthnRpStatus.textContent = env.rpId || "Unavailable";
+      elements.webauthnRpStatus.textContent = env.rpId || MSG_UNAVAILABLE;
       elements.webauthnSecureStatus.textContent = yesNo(env.secureContext);
       elements.webauthnApiStatus.textContent = yesNo(env.apiAvailable);
       elements.passkeyLabelOutput.textContent = PASSKEY_LABEL;
@@ -1340,23 +1427,23 @@
     function describePasskeyFailure(error) {
       const detail = error && error.message ? error.message : String(error);
       if (/secure context|HTTPS|not allowed|origin|RP ID|unavailable/i.test(detail)) {
-        return "Passkey setup failed on this site. I switched back to passphrase mode.";
+        return MSG_WEBAUTHN_SETUP_FAILED;
       }
       if (/cancelled|timed out|credential|authenticator|PRF|WebAuthn|not supported/i.test(detail)) {
-        return "Passkey setup was not completed or is not supported here. I switched back to passphrase mode.";
+        return MSG_WEBAUTHN_SETUP_CANCELLED;
       }
-      return "Passkey setup failed. I switched back to passphrase mode.";
+      return MSG_WEBAUTHN_SETUP_GENERIC;
     }
 
     function describePasskeyRecoveryFailure(error) {
       const detail = error && error.message ? error.message : String(error);
       if (/created for RP ID|origin|RP ID|site/i.test(detail)) {
-        return "This code was created for a different site. Open it from the original site and try again.";
+        return MSG_WEBAUTHN_RECOVERY_DIFFERENT_SITE;
       }
       if (/cancelled|timed out|credential|authenticator|PRF|WebAuthn|not supported|unavailable/i.test(detail)) {
-        return "Passkey recovery failed. Use the same passkey setup on the original site.";
+        return MSG_WEBAUTHN_RECOVERY_FAILED;
       }
-      return "Passkey recovery failed.";
+      return MSG_WEBAUTHN_RECOVERY_GENERIC;
     }
 
     function updateModeUi() {
@@ -1364,9 +1451,9 @@
       setHidden(elements.createPassphraseFields, mode !== "passphrase");
       setHidden(elements.webauthnCreateFields, mode !== "webauthn");
       if (mode === "plain") {
-        setCreateMessage("warning", "Plain mode is not encrypted. Anyone who scans the code can read the string.");
+        setCreateMessage("warning", MSG_PLAIN_MODE_WARNING);
       } else if (mode === "webauthn") {
-        setCreateMessage("notice", "Passkey mode is advanced. Use the browser prompt to choose this device, a phone, or a security key. Each code gets a new encryption key.");
+        setCreateMessage("notice", MSG_WEBAUTHN_MODE_NOTICE);
       } else {
         setCreateMessage("", "");
       }
@@ -1381,7 +1468,7 @@
       setHidden(elements.copyStatus, true);
       const value = elements.recoverPayload.value;
       if (!value.trim()) {
-        elements.recoverModeSummary.textContent = "Waiting for payload.";
+        elements.recoverModeSummary.textContent = MSG_WAITING_FOR_PAYLOAD;
         setHidden(elements.recoverPassphraseField, false);
         return;
       }
@@ -1390,7 +1477,7 @@
         elements.recoverModeSummary.textContent = detected.label;
         setHidden(elements.recoverPassphraseField, detected.kind !== "passphrase");
       } catch (error) {
-        elements.recoverModeSummary.textContent = "Unsupported or malformed payload.";
+        elements.recoverModeSummary.textContent = MSG_UNSUPPORTED_PAYLOAD_TYPE;
       }
     }
 
@@ -1398,14 +1485,14 @@
       latestPayload = payload;
       latestQrContent = buildQrContent(payload);
       if (payload.startsWith(ENCRYPTED_PREFIX) && shouldEncodeQrAsUrl() && latestQrContent === payload) {
-        throw new Error("Hosted QR generation must include this page URL.");
+        throw new Error(MSG_HOSTED_QR_URL_REQUIRED);
       }
       elements.payloadOutput.value = payload;
       elements.qrContentOutput.value = latestQrContent;
       setHidden(elements.qrContentField, latestQrContent === payload);
       elements.codeModeLabel.textContent = modeLabel;
       elements.codeDate.textContent = new Date().toISOString().slice(0, 10);
-      elements.codeChecksum.textContent = "Checksum " + shortChecksum(latestQrContent);
+      elements.codeChecksum.textContent = MSG_CHECKSUM_PREFIX + shortChecksum(latestQrContent);
       setHidden(elements.passkeyOutputDetails, modeKind !== "webauthn");
       drawQrToCanvas(elements.qrCanvas, latestQrContent);
       setHidden(elements.outputArea, false);
@@ -1431,7 +1518,7 @@
       hideAt = Date.now() + 60000;
       countdownTimer = root.setInterval(() => {
         const remaining = Math.max(0, Math.ceil((hideAt - Date.now()) / 1000));
-        elements.hideCountdown.textContent = remaining ? "Hides in " + remaining + "s" : "";
+        elements.hideCountdown.textContent = remaining ? MSG_HIDE_COUNTDOWN_PREFIX + remaining + MSG_HIDE_COUNTDOWN_SUFFIX : "";
       }, 250);
       hideTimer = root.setTimeout(hideSecret, 60000);
     }
@@ -1444,38 +1531,38 @@
       try {
         const text = elements.secretInput.value;
         if (!text) {
-          throw new Error("Enter a string first.");
+          throw new Error(MSG_EMPTY_SECRET);
         }
         mode = currentCreateMode();
         if (mode === "plain") {
-          renderOutput(encodePlainPayload(text), "Plain unencrypted code", "plain");
+          renderOutput(encodePlainPayload(text), MSG_PLAIN_MODE_LABEL, "plain");
           return;
         }
         if (mode === "webauthn") {
           if (!elements.webauthnAck.checked) {
-            throw new Error("Confirm the passkey recovery dependency first.");
+            throw new Error(MSG_PASSKEY_ACK_REQUIRED);
           }
-          updateWebAuthnStatus("Checking site passkey");
+          updateWebAuthnStatus(MSG_PRF_CHECKING);
           const compactJwe = await encryptWebAuthnJwe(text);
-          renderOutput(ENCRYPTED_PREFIX + compactJwe, "Passkey encrypted code", "webauthn");
-          updateWebAuthnStatus("Succeeded for this code");
+          renderOutput(ENCRYPTED_PREFIX + compactJwe, MSG_WEBAUTHN_MODE_LABEL, "webauthn");
+          updateWebAuthnStatus(MSG_PRF_SUCCEEDED);
           return;
         }
         const passphrase = elements.createPassphrase.value;
         const confirm = elements.createPassphraseConfirm.value;
         if (passphrase !== confirm) {
-          throw new Error("Passphrase confirmation does not match.");
+          throw new Error(MSG_PASSPHRASE_MISMATCH);
         }
         const compactJwe = await encryptPassphraseJwe(text, passphrase);
-        renderOutput(ENCRYPTED_PREFIX + compactJwe, "Passphrase encrypted code", "passphrase");
+        renderOutput(ENCRYPTED_PREFIX + compactJwe, MSG_PASSPHRASE_MODE_LABEL, "passphrase");
       } catch (error) {
         if (mode === "webauthn") {
-          if (error && error.message === "Confirm the passkey recovery dependency first.") {
+          if (error && error.message === MSG_PASSKEY_ACK_REQUIRED) {
             showCreateError(error);
             return;
           }
           selectCreateMode("passphrase");
-          updateWebAuthnStatus("Failed; passphrase selected");
+          updateWebAuthnStatus(MSG_PRF_FAILED);
           showCreateError(new Error(describePasskeyFailure(error)));
           return;
         }
@@ -1511,7 +1598,7 @@
       root.clearTimeout(state.timer);
       state.timer = 0;
       button.dataset.confirmClear = "";
-      button.textContent = "Clear";
+      button.textContent = MSG_CLEAR_BUTTON;
       button.classList.add("secondary");
       button.classList.remove("danger");
     }
@@ -1523,7 +1610,7 @@
         return;
       }
       button.dataset.confirmClear = "true";
-      button.textContent = "Confirm";
+      button.textContent = MSG_CONFIRM_BUTTON;
       button.classList.remove("secondary");
       button.classList.add("danger");
       root.clearTimeout(state.timer);
@@ -1576,7 +1663,7 @@
     });
     elements.downloadCodeButton.addEventListener("click", () => {
       const link = document.createElement("a");
-      link.download = "encrypted-2d-barcode.png";
+      link.download = DOWNLOAD_FILENAME;
       link.href = elements.qrCanvas.toDataURL("image/png");
       link.click();
     });
@@ -1594,7 +1681,7 @@
       try {
         await copyText(recoveredSecret);
         hideSecret();
-        elements.copyStatus.textContent = "content is copied to clipboard";
+        elements.copyStatus.textContent = MSG_COPY_SUCCESS;
         setHidden(elements.copyStatus, false);
       } catch (error) {
         showError(elements.recoverError, error);
