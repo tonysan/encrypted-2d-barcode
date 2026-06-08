@@ -669,6 +669,49 @@
     };
   }
 
+  function makeDiscoverableWebAuthnPrfRequestOptions(prfSalt, rpId) {
+    return {
+      publicKey: {
+        challenge: randomBytes(32),
+        rpId: normalizeRpId(rpId),
+        userVerification: "preferred",
+        timeout: WEBAUTHN_TIMEOUT_MS,
+        hints: WEBAUTHN_HINTS.slice(),
+        extensions: {
+          prf: {
+            eval: {
+              first: toUint8Array(prfSalt)
+            }
+          }
+        }
+      }
+    };
+  }
+
+  function makeBoundWebAuthnPrfRequestOptions(credentialIdBase64Url, prfSalt, rpId) {
+    return {
+      publicKey: {
+        challenge: randomBytes(32),
+        rpId: normalizeRpId(rpId),
+        allowCredentials: [
+          makeWebAuthnCredentialDescriptor(credentialIdBase64Url)
+        ],
+        userVerification: "preferred",
+        timeout: WEBAUTHN_TIMEOUT_MS,
+        hints: WEBAUTHN_HINTS.slice(),
+        extensions: {
+          prf: {
+            evalByCredential: {
+              [credentialIdBase64Url]: {
+                first: toUint8Array(prfSalt)
+              }
+            }
+          }
+        }
+      }
+    };
+  }
+
   async function createWebAuthnPrfCredential(prfSalt, rpId, options) {
     const saltBytes = toUint8Array(prfSalt);
     const normalizedRpId = normalizeRpId(rpId);
@@ -722,29 +765,10 @@
   async function requestWebAuthnPrfOutput(credentialIdBase64Url, prfSalt, rpId) {
     const normalizedRpId = normalizeRpId(rpId);
     assertWebAuthnAvailable(normalizedRpId);
-    const saltBytes = toUint8Array(prfSalt);
     try {
-      const assertion = await root.navigator.credentials.get({
-        publicKey: {
-          challenge: randomBytes(32),
-          rpId: normalizedRpId,
-          allowCredentials: [
-            makeWebAuthnCredentialDescriptor(credentialIdBase64Url)
-          ],
-          userVerification: "preferred",
-          timeout: WEBAUTHN_TIMEOUT_MS,
-          hints: WEBAUTHN_HINTS.slice(),
-          extensions: {
-            prf: {
-              evalByCredential: {
-                [credentialIdBase64Url]: {
-                  first: saltBytes
-                }
-              }
-            }
-          }
-        }
-      });
+      const assertion = await root.navigator.credentials.get(
+        makeBoundWebAuthnPrfRequestOptions(credentialIdBase64Url, prfSalt, normalizedRpId)
+      );
       if (!assertion || !assertion.rawId) {
         throw new Error("Browser did not return a WebAuthn assertion.");
       }
@@ -765,6 +789,33 @@
         throw error;
       }
       throw new Error("WebAuthn credential request failed: " + describeWebAuthnDomError(error) + ".");
+    }
+  }
+
+  async function requestDiscoverableWebAuthnPrfOutput(prfSalt, rpId) {
+    const normalizedRpId = normalizeRpId(rpId);
+    assertWebAuthnAvailable(normalizedRpId);
+    try {
+      const assertion = await root.navigator.credentials.get(
+        makeDiscoverableWebAuthnPrfRequestOptions(prfSalt, normalizedRpId)
+      );
+      if (!assertion || !assertion.rawId) {
+        throw new Error("Browser did not return a WebAuthn assertion.");
+      }
+      const credentialIdBase64Url = base64UrlEncode(toUint8Array(assertion.rawId));
+      const prfOutput = getPrfFirstResult(assertion);
+      if (!prfOutput) {
+        throw new Error("Authenticator did not return a WebAuthn PRF result.");
+      }
+      return {
+        credentialIdBase64Url,
+        prfOutput
+      };
+    } catch (error) {
+      if (error && error.message && error.message.startsWith("Authenticator did not")) {
+        throw error;
+      }
+      throw new Error("Existing passkey request failed: " + describeWebAuthnDomError(error) + ".");
     }
   }
 
@@ -817,24 +868,31 @@
     const remembered = readRememberedPasskeyCredential(rpId);
     let credentialIdBase64Url;
     let prfOutput;
-    if (remembered) {
-      credentialIdBase64Url = remembered.credentialIdBase64Url;
-      prfOutput = await requestWebAuthnPrfOutput(credentialIdBase64Url, prfSalt, rpId);
-    } else {
-      if (!getPasskeyStorage()) {
-        throw new Error("Passkey mode needs browser storage for non-secret passkey metadata.");
-      }
-      const credential = await createWebAuthnPrfCredential(prfSalt, rpId, { label: "site passkey" });
-      credentialIdBase64Url = base64UrlEncode(toUint8Array(credential.rawId));
-      const prfEnabled = getPrfEnabledResult(credential);
-      if (prfEnabled === false) {
-        throw new Error("Authenticator did not enable WebAuthn PRF for this credential.");
-      }
-      prfOutput = getPrfFirstResult(credential);
-      if (!prfOutput) {
-        prfOutput = await requestWebAuthnPrfOutput(credentialIdBase64Url, prfSalt, rpId);
-      }
+    try {
+      const selected = await requestDiscoverableWebAuthnPrfOutput(prfSalt, rpId);
+      credentialIdBase64Url = selected.credentialIdBase64Url;
+      prfOutput = selected.prfOutput;
       rememberPasskeyCredential(rpId, credentialIdBase64Url);
+    } catch (discoverableError) {
+      if (remembered) {
+        credentialIdBase64Url = remembered.credentialIdBase64Url;
+        prfOutput = await requestWebAuthnPrfOutput(credentialIdBase64Url, prfSalt, rpId);
+      } else {
+        if (!getPasskeyStorage()) {
+          throw new Error("Passkey mode needs browser storage for non-secret passkey metadata.");
+        }
+        const credential = await createWebAuthnPrfCredential(prfSalt, rpId, { label: "site passkey" });
+        credentialIdBase64Url = base64UrlEncode(toUint8Array(credential.rawId));
+        const prfEnabled = getPrfEnabledResult(credential);
+        if (prfEnabled === false) {
+          throw new Error("Authenticator did not enable WebAuthn PRF for this credential.");
+        }
+        prfOutput = getPrfFirstResult(credential);
+        if (!prfOutput) {
+          prfOutput = await requestWebAuthnPrfOutput(credentialIdBase64Url, prfSalt, rpId);
+        }
+        rememberPasskeyCredential(rpId, credentialIdBase64Url);
+      }
     }
     const header = makeWebAuthnProtectedHeader(credentialIdBase64Url, rpId, prfSalt);
     const metadata = validateDirectHeader(header);
@@ -1509,6 +1567,8 @@
     decryptDirectJwe,
     makeWebAuthnProtectedHeader,
     makeWebAuthnCredentialDescriptor,
+    makeDiscoverableWebAuthnPrfRequestOptions,
+    makeBoundWebAuthnPrfRequestOptions,
     validateDirectHeader,
     deriveWebAuthnDirectKeyBytes,
     getCurrentRpId,

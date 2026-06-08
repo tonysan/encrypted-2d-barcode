@@ -71,7 +71,7 @@ Passphrase mode should be designed to work from a local or offline static copy w
 
 Manual paste recovery remains available for payload-only codes and local/offline use.
 
-Passkey mode requires a compatible secure origin, browser, unlock device, and stable site identity. The first passkey-protected code creates one reusable site passkey; later codes reuse it with a new random salt. Compatible browsers may offer this device, a phone/tablet, or a security key in the passkey prompt. The app falls back to passphrase mode if passkey setup or reuse fails.
+Passkey mode requires a compatible secure origin, browser, unlock device, and stable site identity. Encryption first asks the browser to read an existing passkey for this site, including passkeys on a phone/tablet or security key where supported. If no usable passkey is available, the app can create one reusable site passkey. Each code uses a new random salt. The app falls back to passphrase mode if passkey setup or reuse fails.
 
 ## Passkey Hosting Warning
 

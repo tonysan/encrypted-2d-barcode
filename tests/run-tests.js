@@ -171,6 +171,28 @@ async function testWebAuthnCredentialDescriptorAllowsMobile() {
   assert.equal(descriptor.transports.includes("internal"), true);
 }
 
+async function testDiscoverablePasskeyRequestReadsExistingCredential() {
+  const metadata = app.validateDirectHeader(fixedDirectHeader());
+  const options = app.makeDiscoverableWebAuthnPrfRequestOptions(metadata.prfSalt, metadata.rpId);
+  assert.equal(options.publicKey.rpId, "encrypt.tonysan.fun");
+  assert.equal(options.publicKey.challenge.length, 32);
+  assert.equal(Object.hasOwn(options.publicKey, "allowCredentials"), false);
+  assert.equal(options.publicKey.hints.includes("hybrid"), true);
+  assert.equal(options.publicKey.extensions.prf.eval.first.length, 32);
+  assert.equal(Object.hasOwn(options.publicKey.extensions.prf, "evalByCredential"), false);
+}
+
+async function testBoundPasskeyRequestUsesStoredCredentialId() {
+  const header = fixedDirectHeader();
+  const metadata = app.validateDirectHeader(header);
+  const options = app.makeBoundWebAuthnPrfRequestOptions(header.cid, metadata.prfSalt, metadata.rpId);
+  assert.equal(options.publicKey.rpId, "encrypt.tonysan.fun");
+  assert.equal(options.publicKey.allowCredentials.length, 1);
+  assert.equal(options.publicKey.allowCredentials[0].transports.includes("hybrid"), true);
+  assert.equal(options.publicKey.extensions.prf.evalByCredential[header.cid].first.length, 32);
+  assert.equal(Object.hasOwn(options.publicKey.extensions.prf, "eval"), false);
+}
+
 async function testDirectJweRoundtrip() {
   const compact = await app.encryptDirectJwe("direct secret", zeroKey(), fixedDirectHeader(), { iv: fixedIv() });
   assert.equal(await app.decryptDirectJwe(compact, zeroKey()), "direct secret");
@@ -347,6 +369,8 @@ async function run() {
     testDirectJweShape,
     testDirectHeaderValidation,
     testWebAuthnCredentialDescriptorAllowsMobile,
+    testDiscoverablePasskeyRequestReadsExistingCredential,
+    testBoundPasskeyRequestUsesStoredCredentialId,
     testDirectJweRoundtrip,
     testWrongDirectKey,
     testCorruptedDirectCiphertext,
