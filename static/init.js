@@ -29,21 +29,21 @@
 
   // User-facing messages
   const MSG_EMPTY_PASSPHRASE = "Enter a passphrase.";
-  const MSG_WRONG_PASSPHRASE = "That passphrase did not unlock this code.";
+  const MSG_WRONG_PASSPHRASE = "That passphrase did not decrypt this code.";
   const MSG_EMPTY_PAYLOAD = "Paste a code or link first.";
   const MSG_NO_CLIPBOARD = "Copy is not available in this browser or page.";
   const MSG_HOSTED_QR_URL_REQUIRED = "Open this app from a web address before generating an encrypted code.";
   const MSG_EMPTY_SECRET = "Enter content first.";
   const MSG_PASSPHRASE_MISMATCH = "The passphrases do not match.";
   const MSG_PASSKEY_ACK_REQUIRED = "Confirm that the same passkey is needed to decrypt later.";
-  const MSG_PLAIN_MODE_WARNING = "Plain mode is not encrypted. Anyone who scans the code can read it.";
+  const MSG_PLAIN_MODE_WARNING = "Generate code with no redirect or tracking. Plain mode is not encrypted. Anyone who scans the code can read it.";
   const MSG_WEBAUTHN_MODE_NOTICE = "Passkey mode can use this device, a phone, or a security key. The same passkey can protect many codes.";
-  const MSG_WEBAUTHN_SETUP_FAILED = "Passkey is not available on this site. Switched back to passphrase mode.";
-  const MSG_WEBAUTHN_SETUP_CANCELLED = "Passkey was cancelled or is not supported here. Switched back to passphrase mode.";
+  const MSG_WEBAUTHN_SETUP_FAILED = "Passkey is not available. Switched back to passphrase mode.";
+  const MSG_WEBAUTHN_SETUP_CANCELLED = "Passkey was cancelled, or not supported. Switched back to passphrase mode.";
   const MSG_WEBAUTHN_SETUP_GENERIC = "Passkey did not work. Switched back to passphrase mode.";
   const MSG_WEBAUTHN_RECOVERY_DIFFERENT_SITE = "This code was made for a different site. Open it from the original site and try again.";
-  const MSG_WEBAUTHN_RECOVERY_FAILED = "The passkey did not unlock this code. Use the same passkey on the original site.";
-  const MSG_WEBAUTHN_RECOVERY_GENERIC = "The passkey did not unlock this code.";
+  const MSG_WEBAUTHN_RECOVERY_FAILED = "The passkey did not decrypt this code. Use the same passkey on the original site.";
+  const MSG_WEBAUTHN_RECOVERY_GENERIC = "The passkey did not decrypt this code.";
   const MSG_COPY_SUCCESS = "Copied to clipboard.";
   const MSG_TRUNCATED_OUTPUT = "[Preview shortened. Use Copy if needed.]";
   const MSG_WAITING_FOR_PAYLOAD = "Waiting for code.";
