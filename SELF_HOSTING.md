@@ -12,7 +12,10 @@ The deployable app lives in `static/` and should be distributed as static files 
 
 ```text
 static/index.html
+static/init.js
 static/app.js
+static/passkey.js
+static/ui.js
 static/style.css
 static/_headers
 static/vendor/qrcode-generator.js

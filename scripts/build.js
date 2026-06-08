@@ -5,7 +5,10 @@ const { prepareStatic, root, staticDir } = require("./prepare-static");
 
 const requiredFiles = [
   "index.html",
+  "init.js",
   "app.js",
+  "passkey.js",
+  "ui.js",
   "style.css",
   "LICENSE",
   "_headers",
@@ -39,10 +42,13 @@ for (const file of requiredFiles) {
 const html = fs.readFileSync(path.join(staticDir, "index.html"), "utf8");
 if (
   !/href="\.\/style\.css(?:\?v=[^"]+)"/.test(html) ||
-  !/src="\.\/vendor\/qrcode-generator\.js(?:\?v=[^"]+)"/.test(html) ||
-  !/src="\.\/app\.js(?:\?v=[^"]+)"/.test(html)
+  !/src="\.\/init\.js(?:\?v=[^"]+)"/.test(html) ||
+  !/src="\.\/app\.js(?:\?v=[^"]+)"/.test(html) ||
+  !/<script defer src="\.\/passkey\.js(?:\?v=[^"]+)"><\/script>/.test(html) ||
+  !/<script defer src="\.\/vendor\/qrcode-generator\.js(?:\?v=[^"]+)"><\/script>/.test(html) ||
+  !/src="\.\/ui\.js(?:\?v=[^"]+)"/.test(html)
 ) {
-  console.error("static/index.html must reference local style, QR vendor, and app files");
+  console.error("static/index.html must reference local style and split app files");
   process.exit(1);
 }
 

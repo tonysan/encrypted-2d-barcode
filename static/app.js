@@ -1,126 +1,128 @@
-(function initRuntime(root) {
+(function initCore(root) {
   "use strict";
+
+  const config = root.ERKConfig;
+  if (!config) {
+    throw new Error("Config module is not loaded.");
+  }
+
+  const {
+    ENCRYPTED_PREFIX,
+    PLAIN_PREFIX,
+    PASSWORD_ALG,
+    DIRECT_ALG,
+    CONTENT_ALG,
+    DEFAULT_P2C,
+    MAX_P2C,
+    GCM_TAG_BYTES,
+    QR_ERROR_CORRECTION,
+    QR_MARGIN_MODULES,
+    QR_MODULE_PIXELS,
+    WEBAUTHN_PROFILE,
+    WEBAUTHN_PRF_SALT_BYTES,
+    AES_256_KEY_BYTES,
+    AES_GCM_IV_BYTES,
+    WEBAUTHN_TIMEOUT_MS,
+    WEBAUTHN_HKDF_SALT_LABEL,
+    WEBAUTHN_HKDF_INFO_LABEL,
+    PASSKEY_CREDENTIAL_STORAGE_KEY,
+    WEBAUTHN_TRANSPORTS,
+    WEBAUTHN_HINTS,
+    PASSKEY_LABEL,
+    PASSKEY_USER_ID,
+    DOWNLOAD_FILENAME,
+    MSG_EMPTY_PASSPHRASE,
+    MSG_WRONG_PASSPHRASE,
+    MSG_EMPTY_PAYLOAD,
+    MSG_NO_CLIPBOARD,
+    MSG_HOSTED_QR_URL_REQUIRED,
+    MSG_EMPTY_SECRET,
+    MSG_PASSPHRASE_MISMATCH,
+    MSG_PASSKEY_ACK_REQUIRED,
+    MSG_PLAIN_MODE_WARNING,
+    MSG_WEBAUTHN_MODE_NOTICE,
+    MSG_WEBAUTHN_SETUP_FAILED,
+    MSG_WEBAUTHN_SETUP_CANCELLED,
+    MSG_WEBAUTHN_SETUP_GENERIC,
+    MSG_WEBAUTHN_RECOVERY_DIFFERENT_SITE,
+    MSG_WEBAUTHN_RECOVERY_FAILED,
+    MSG_WEBAUTHN_RECOVERY_GENERIC,
+    MSG_COPY_SUCCESS,
+    MSG_TRUNCATED_OUTPUT,
+    MSG_WAITING_FOR_PAYLOAD,
+    MSG_UNSUPPORTED_PAYLOAD_TYPE,
+    MSG_PLAIN_UNENCRYPTED,
+    MSG_PASSPHRASE_ENCRYPTED,
+    MSG_WEBAUTHN_ENCRYPTED,
+    MSG_PLAIN_MODE_LABEL,
+    MSG_PASSPHRASE_MODE_LABEL,
+    MSG_WEBAUTHN_MODE_LABEL,
+    MSG_LOCAL_FILE,
+    MSG_YES,
+    MSG_NO,
+    MSG_UNAVAILABLE,
+    MSG_CHECKSUM_PREFIX,
+    MSG_HIDE_COUNTDOWN_PREFIX,
+    MSG_HIDE_COUNTDOWN_SUFFIX,
+    MSG_PRF_CHECKING,
+    MSG_PRF_SUCCEEDED,
+    MSG_PRF_FAILED,
+    MSG_CLEAR_BUTTON,
+    MSG_CONFIRM_BUTTON,
+    MSG_INVALID_BASE64URL,
+    MSG_MALFORMED_HEADER,
+    MSG_UNSUPPORTED_HEADER,
+    MSG_UNSUPPORTED_ALG,
+    MSG_UNSUPPORTED_ENC,
+    MSG_UNSUPPORTED_P2C,
+    MSG_UNSUPPORTED_P2C_OPTION,
+    MSG_UNSUPPORTED_WEBAUTHN,
+    MSG_MALFORMED_WEBAUTHN,
+    MSG_MALFORMED_CREDENTIAL_ID,
+    MSG_MALFORMED_PRF_SALT,
+    MSG_EXPECTED_JWE,
+    MSG_DIRECT_NO_ENCRYPTED_KEY,
+    MSG_WRONG_DIRECT_KEY,
+    MSG_INVALID_RP_ID,
+    MSG_NO_CRYPTO,
+    MSG_EXPECTED_BINARY,
+    MSG_NO_QR_LIB,
+    MSG_UNSUPPORTED_PAYLOAD,
+    MSG_NO_STORAGE,
+    MSG_WEBAUTHN_SECURE_CONTEXT,
+    MSG_WEBAUTHN_API_UNAVAILABLE,
+    MSG_WEBAUTHN_RP_UNAVAILABLE,
+    MSG_WEBAUTHN_CREDENTIAL_CREATION,
+    MSG_WEBAUTHN_CREDENTIAL_REQUEST,
+    MSG_WEBAUTHN_DIFFERENT_CREDENTIAL,
+    MSG_WEBAUTHN_NO_PRF_RESULT,
+    MSG_WEBAUTHN_INVALID_PRF_OUTPUT,
+    MSG_WEBAUTHN_PRF_DISABLED,
+    MSG_WEBAUTHN_WRONG_CREDENTIAL,
+    MSG_WEBAUTHN_DIFFERENT_RP,
+    MSG_WEBAUTHN_DIFFERENT_RP_PAGE,
+    MSG_INVALID_DIRECT_KEY_SIZE,
+    MSG_INVALID_IV_SIZE,
+    MSG_INVALID_PRF_OUTPUT_SIZE,
+    MSG_INVALID_PRF_SALT_SIZE,
+    MSG_WEBAUTHN_CREDENTIAL_CREATION_FAILED,
+    MSG_WEBAUTHN_CREDENTIAL_REQUEST_FAILED,
+    MSG_EXISTING_PASSKEY_REQUEST_FAILED,
+    MSG_WEBAUTHN_REQUEST_CANCELLED,
+    MSG_WEBAUTHN_ORIGIN_NOT_ALLOWED,
+    MSG_WEBAUTHN_PRF_NOT_SUPPORTED,
+    MSG_WEBAUTHN_AUTHENTICATOR_REJECTED
+  } = config;
 
   /*
    * Audit map:
    * - QR standards logic is delegated to pinned qrcode-generator.
    * - Cryptographic primitives are delegated to Web Crypto.
-   * - This file owns only the small app profile, format validation, and UI flow.
+   * - This file owns the app profile, format validation, and non-DOM helpers.
    * - The base64 helpers below are JOSE Compact Serialization glue. They adapt
    *   bytes to unpadded base64url because browsers expose standard base64 via
    *   btoa/atob, not a universal base64url API.
    */
-
-  // Configs
-  const ENCRYPTED_PREFIX = "ERK1.";
-  const PLAIN_PREFIX = "ERP1.";
-  const PASSWORD_ALG = "PBES2-HS512+A256KW";
-  const DIRECT_ALG = "dir";
-  const CONTENT_ALG = "A256GCM";
-  const DEFAULT_P2C = 210000;
-  const MAX_P2C = 5000000;
-  const GCM_TAG_BYTES = 16;
-  const QR_ERROR_CORRECTION = "M";
-  const QR_MARGIN_MODULES = 4;
-  const QR_MODULE_PIXELS = 10;
-  const WEBAUTHN_PROFILE = "erk-webauthn-prf-v1";
-  const WEBAUTHN_PRF_SALT_BYTES = 32;
-  const AES_256_KEY_BYTES = 32;
-  const AES_GCM_IV_BYTES = 12;
-  const WEBAUTHN_TIMEOUT_MS = 120000;
-  const WEBAUTHN_HKDF_SALT_LABEL = "encrypted-2d-barcode WebAuthn PRF HKDF salt v1";
-  const WEBAUTHN_HKDF_INFO_LABEL = "ERK1 WebAuthn PRF A256GCM direct key v1";
-  const PASSKEY_CREDENTIAL_STORAGE_KEY = "erk1.passkeyCredential.v1";
-  const WEBAUTHN_TRANSPORTS = ["hybrid", "internal", "usb", "nfc", "ble"];
-  const WEBAUTHN_HINTS = ["hybrid", "client-device", "security-key"];
-  const PASSKEY_LABEL = "Encrypted 2D Barcode";
-  const PASSKEY_USER_ID = "encrypted-2d-barcode-passkey-v1";
-  const DOWNLOAD_FILENAME = "encrypted-2d-barcode.png";
-
-  // User-facing messages
-  const MSG_EMPTY_PASSPHRASE = "Enter a passphrase.";
-  const MSG_WRONG_PASSPHRASE = "That passphrase did not unlock this code.";
-  const MSG_EMPTY_PAYLOAD = "Paste a code or link first.";
-  const MSG_NO_CLIPBOARD = "Copy is not available in this browser or page.";
-  const MSG_HOSTED_QR_URL_REQUIRED = "Open this app from a web address before generating an encrypted code.";
-  const MSG_EMPTY_SECRET = "Enter content first.";
-  const MSG_PASSPHRASE_MISMATCH = "The passphrases do not match.";
-  const MSG_PASSKEY_ACK_REQUIRED = "Confirm that the same passkey is needed to decrypt later.";
-  const MSG_PLAIN_MODE_WARNING = "Plain mode is not encrypted. Anyone who scans the code can read it.";
-  const MSG_WEBAUTHN_MODE_NOTICE = "Passkey mode can use this device, a phone, or a security key. The same passkey can protect many codes.";
-  const MSG_WEBAUTHN_SETUP_FAILED = "Passkey is not available on this site. Switched back to passphrase mode.";
-  const MSG_WEBAUTHN_SETUP_CANCELLED = "Passkey was cancelled or is not supported here. Switched back to passphrase mode.";
-  const MSG_WEBAUTHN_SETUP_GENERIC = "Passkey did not work. Switched back to passphrase mode.";
-  const MSG_WEBAUTHN_RECOVERY_DIFFERENT_SITE = "This code was made for a different site. Open it from the original site and try again.";
-  const MSG_WEBAUTHN_RECOVERY_FAILED = "The passkey did not unlock this code. Use the same passkey on the original site.";
-  const MSG_WEBAUTHN_RECOVERY_GENERIC = "The passkey did not unlock this code.";
-  const MSG_COPY_SUCCESS = "Copied to clipboard.";
-  const MSG_TRUNCATED_OUTPUT = "[Preview shortened. Use Copy if needed.]";
-  const MSG_WAITING_FOR_PAYLOAD = "Waiting for code.";
-  const MSG_UNSUPPORTED_PAYLOAD_TYPE = "This does not look like a supported code.";
-  const MSG_PLAIN_UNENCRYPTED = "Plain text, not encrypted";
-  const MSG_PASSPHRASE_ENCRYPTED = "Passphrase-protected code";
-  const MSG_WEBAUTHN_ENCRYPTED = "Passkey-protected code";
-  const MSG_PLAIN_MODE_LABEL = "Plain code";
-  const MSG_PASSPHRASE_MODE_LABEL = "Passphrase-protected code";
-  const MSG_WEBAUTHN_MODE_LABEL = "Passkey-protected code";
-  const MSG_LOCAL_FILE = "local file";
-  const MSG_YES = "Yes";
-  const MSG_NO = "No";
-  const MSG_UNAVAILABLE = "Unavailable";
-  const MSG_CHECKSUM_PREFIX = "Checksum ";
-  const MSG_HIDE_COUNTDOWN_PREFIX = "Hides in ";
-  const MSG_HIDE_COUNTDOWN_SUFFIX = "s";
-  const MSG_PRF_CHECKING = "Checking passkey";
-  const MSG_PRF_SUCCEEDED = "Passkey ready for this code";
-  const MSG_PRF_FAILED = "Passphrase mode selected";
-  const MSG_CLEAR_BUTTON = "Clear";
-  const MSG_CONFIRM_BUTTON = "Confirm";
-
-  // Internal error messages
-  const MSG_INVALID_BASE64URL = "Invalid base64url value.";
-  const MSG_MALFORMED_HEADER = "Malformed JWE protected header.";
-  const MSG_UNSUPPORTED_HEADER = "Unsupported JWE protected header.";
-  const MSG_UNSUPPORTED_ALG = "Unsupported JWE algorithm.";
-  const MSG_UNSUPPORTED_ENC = "Unsupported JWE encryption method.";
-  const MSG_UNSUPPORTED_P2C = "Unsupported JWE PBES2 iteration count.";
-  const MSG_UNSUPPORTED_P2C_OPTION = "Unsupported PBES2 iteration count.";
-  const MSG_UNSUPPORTED_WEBAUTHN = "Unsupported WebAuthn PRF profile.";
-  const MSG_MALFORMED_WEBAUTHN = "Malformed WebAuthn PRF header.";
-  const MSG_MALFORMED_CREDENTIAL_ID = "Malformed WebAuthn credential ID.";
-  const MSG_MALFORMED_PRF_SALT = "Malformed WebAuthn PRF salt.";
-  const MSG_EXPECTED_JWE = "Expected JWE Compact Serialization.";
-  const MSG_DIRECT_NO_ENCRYPTED_KEY = "Direct JWE must not contain an encrypted key.";
-  const MSG_WRONG_DIRECT_KEY = "Wrong direct key or corrupted payload.";
-  const MSG_INVALID_RP_ID = "Invalid WebAuthn RP ID.";
-  const MSG_NO_CRYPTO = "Web Crypto is not available.";
-  const MSG_EXPECTED_BINARY = "Expected binary data.";
-  const MSG_NO_QR_LIB = "QR code library is not loaded.";
-  const MSG_UNSUPPORTED_PAYLOAD = "Unsupported encrypted payload.";
-  const MSG_NO_STORAGE = "Passkey mode needs browser storage for non-secret passkey metadata.";
-  const MSG_WEBAUTHN_SECURE_CONTEXT = "WebAuthn PRF requires a browser secure context.";
-  const MSG_WEBAUTHN_API_UNAVAILABLE = "WebAuthn APIs are not available in this browser.";
-  const MSG_WEBAUTHN_RP_UNAVAILABLE = "WebAuthn RP ID is unavailable for this page.";
-  const MSG_WEBAUTHN_CREDENTIAL_CREATION = "Browser did not return a WebAuthn credential.";
-  const MSG_WEBAUTHN_CREDENTIAL_REQUEST = "Browser did not return a WebAuthn assertion.";
-  const MSG_WEBAUTHN_DIFFERENT_CREDENTIAL = "Browser returned a different WebAuthn credential.";
-  const MSG_WEBAUTHN_NO_PRF_RESULT = "Authenticator did not return a WebAuthn PRF result.";
-  const MSG_WEBAUTHN_INVALID_PRF_OUTPUT = "Authenticator returned an invalid WebAuthn PRF result.";
-  const MSG_WEBAUTHN_PRF_DISABLED = "Authenticator did not enable WebAuthn PRF for this credential.";
-  const MSG_WEBAUTHN_WRONG_CREDENTIAL = "Wrong WebAuthn credential or corrupted payload.";
-  const MSG_WEBAUTHN_DIFFERENT_RP = "This WebAuthn code was created for RP ID ";
-  const MSG_WEBAUTHN_DIFFERENT_RP_PAGE = ", but this page is ";
-  const MSG_INVALID_DIRECT_KEY_SIZE = "Direct JWE key must be 256 bits.";
-  const MSG_INVALID_IV_SIZE = "AES-GCM IV must be 96 bits.";
-  const MSG_INVALID_PRF_OUTPUT_SIZE = "WebAuthn PRF output must be 256 bits.";
-  const MSG_INVALID_PRF_SALT_SIZE = "WebAuthn PRF salt must be 256 bits.";
-  const MSG_WEBAUTHN_CREDENTIAL_CREATION_FAILED = "WebAuthn credential creation failed: ";
-  const MSG_WEBAUTHN_CREDENTIAL_REQUEST_FAILED = "WebAuthn credential request failed: ";
-  const MSG_EXISTING_PASSKEY_REQUEST_FAILED = "Existing passkey request failed: ";
-  const MSG_WEBAUTHN_REQUEST_CANCELLED = "request was cancelled, timed out, or the credential is unavailable";
-  const MSG_WEBAUTHN_ORIGIN_NOT_ALLOWED = "this origin or RP ID is not allowed";
-  const MSG_WEBAUTHN_PRF_NOT_SUPPORTED = "the requested WebAuthn PRF extension is not supported";
-  const MSG_WEBAUTHN_AUTHENTICATOR_REJECTED = "the authenticator rejected this credential request";
 
   // Web Crypto is the security boundary. Node's webcrypto fallback lets tests
   // exercise the same API shape without adding a crypto dependency.
@@ -614,405 +616,6 @@
     }
   }
 
-  function isWebAuthnApiAvailable() {
-    return Boolean(
-      root.navigator &&
-      root.navigator.credentials &&
-      typeof root.navigator.credentials.create === "function" &&
-      typeof root.navigator.credentials.get === "function" &&
-      typeof root.PublicKeyCredential === "function"
-    );
-  }
-
-  function getWebAuthnEnvironment(locationLike) {
-    const locationValue = locationLike || root.location;
-    const origin = locationValue && locationValue.origin && locationValue.origin !== "null"
-      ? locationValue.origin
-      : MSG_LOCAL_FILE;
-    return {
-      origin,
-      rpId: getCurrentRpId(locationValue),
-      secureContext: Boolean(root.isSecureContext),
-      apiAvailable: isWebAuthnApiAvailable()
-    };
-  }
-
-  function getPasskeyStorage() {
-    try {
-      if (!root.localStorage) {
-        return null;
-      }
-      const testKey = PASSKEY_CREDENTIAL_STORAGE_KEY + ".test";
-      root.localStorage.setItem(testKey, "1");
-      root.localStorage.removeItem(testKey);
-      return root.localStorage;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  function readRememberedPasskeyCredential(rpId) {
-    const storage = getPasskeyStorage();
-    if (!storage) {
-      return null;
-    }
-    try {
-      const parsed = JSON.parse(storage.getItem(PASSKEY_CREDENTIAL_STORAGE_KEY) || "null");
-      if (!parsed || typeof parsed !== "object") {
-        return null;
-      }
-      if (normalizeRpId(parsed.rpId) !== normalizeRpId(rpId)) {
-        return null;
-      }
-      const credentialIdBase64Url = String(parsed.credentialIdBase64Url || "");
-      if (base64UrlDecode(credentialIdBase64Url).length === 0) {
-        return null;
-      }
-      return {
-        rpId: normalizeRpId(parsed.rpId),
-        credentialIdBase64Url
-      };
-    } catch (error) {
-      return null;
-    }
-  }
-
-  function rememberPasskeyCredential(rpId, credentialIdBase64Url) {
-    const storage = getPasskeyStorage();
-    if (!storage) {
-      throw new Error(MSG_NO_STORAGE);
-    }
-    base64UrlDecode(credentialIdBase64Url);
-    storage.setItem(PASSKEY_CREDENTIAL_STORAGE_KEY, JSON.stringify({
-      version: 1,
-      rpId: normalizeRpId(rpId),
-      credentialIdBase64Url
-    }));
-  }
-
-  function assertWebAuthnAvailable(rpId) {
-    if (!root.isSecureContext) {
-      throw new Error(MSG_WEBAUTHN_SECURE_CONTEXT);
-    }
-    if (!isWebAuthnApiAvailable()) {
-      throw new Error(MSG_WEBAUTHN_API_UNAVAILABLE);
-    }
-    if (!rpId) {
-      throw new Error(MSG_WEBAUTHN_RP_UNAVAILABLE);
-    }
-  }
-
-  function describeWebAuthnDomError(error) {
-    if (!error || !error.name) {
-      return error && error.message ? error.message : String(error);
-    }
-    if (error.name === "NotAllowedError") {
-      return MSG_WEBAUTHN_REQUEST_CANCELLED;
-    }
-    if (error.name === "SecurityError") {
-      return MSG_WEBAUTHN_ORIGIN_NOT_ALLOWED;
-    }
-    if (error.name === "NotSupportedError") {
-      return MSG_WEBAUTHN_PRF_NOT_SUPPORTED;
-    }
-    if (error.name === "InvalidStateError") {
-      return MSG_WEBAUTHN_AUTHENTICATOR_REJECTED;
-    }
-    return error.message || error.name;
-  }
-
-  function getPrfFirstResult(credential) {
-    if (!credential || typeof credential.getClientExtensionResults !== "function") {
-      return null;
-    }
-    const extensionResults = credential.getClientExtensionResults();
-    const first = extensionResults &&
-      extensionResults.prf &&
-      extensionResults.prf.results &&
-      extensionResults.prf.results.first;
-    if (!first) {
-      return null;
-    }
-    const bytes = toUint8Array(first);
-    if (bytes.length !== AES_256_KEY_BYTES) {
-      throw new Error(MSG_WEBAUTHN_INVALID_PRF_OUTPUT);
-    }
-    return bytes;
-  }
-
-  function getPrfEnabledResult(credential) {
-    if (!credential || typeof credential.getClientExtensionResults !== "function") {
-      return null;
-    }
-    const extensionResults = credential.getClientExtensionResults();
-    return extensionResults && extensionResults.prf && typeof extensionResults.prf.enabled === "boolean"
-      ? extensionResults.prf.enabled
-      : null;
-  }
-
-  function makeWebAuthnCredentialDescriptor(credentialIdBase64Url) {
-    return {
-      type: "public-key",
-      id: base64UrlDecode(credentialIdBase64Url),
-      transports: WEBAUTHN_TRANSPORTS.slice()
-    };
-  }
-
-  function makeDiscoverableWebAuthnPrfRequestOptions(prfSalt, rpId) {
-    return {
-      publicKey: {
-        challenge: randomBytes(32),
-        rpId: normalizeRpId(rpId),
-        userVerification: "preferred",
-        timeout: WEBAUTHN_TIMEOUT_MS,
-        hints: WEBAUTHN_HINTS.slice(),
-        extensions: {
-          prf: {
-            eval: {
-              first: toUint8Array(prfSalt)
-            }
-          }
-        }
-      }
-    };
-  }
-
-  function makeBoundWebAuthnPrfRequestOptions(credentialIdBase64Url, prfSalt, rpId) {
-    return {
-      publicKey: {
-        challenge: randomBytes(32),
-        rpId: normalizeRpId(rpId),
-        allowCredentials: [
-          makeWebAuthnCredentialDescriptor(credentialIdBase64Url)
-        ],
-        userVerification: "preferred",
-        timeout: WEBAUTHN_TIMEOUT_MS,
-        hints: WEBAUTHN_HINTS.slice(),
-        extensions: {
-          prf: {
-            evalByCredential: {
-              [credentialIdBase64Url]: {
-                first: toUint8Array(prfSalt)
-              }
-            }
-          }
-        }
-      }
-    };
-  }
-
-  function makeWebAuthnPrfCreationOptions(prfSalt, rpId) {
-    return {
-      publicKey: {
-        challenge: randomBytes(32),
-        rp: {
-          id: normalizeRpId(rpId),
-          name: PASSKEY_LABEL
-        },
-        user: {
-          id: utf8Encode(PASSKEY_USER_ID),
-          name: PASSKEY_LABEL,
-          displayName: PASSKEY_LABEL
-        },
-        pubKeyCredParams: [
-          { type: "public-key", alg: -7 },
-          { type: "public-key", alg: -257 }
-        ],
-        authenticatorSelection: {
-          residentKey: "required",
-          requireResidentKey: true,
-          userVerification: "preferred"
-        },
-        attestation: "none",
-        timeout: WEBAUTHN_TIMEOUT_MS,
-        hints: WEBAUTHN_HINTS.slice(),
-        extensions: {
-          credProps: true,
-          prf: {
-            eval: {
-              first: toUint8Array(prfSalt)
-            }
-          }
-        }
-      }
-    };
-  }
-
-  async function createWebAuthnPrfCredential(prfSalt, rpId) {
-    const normalizedRpId = normalizeRpId(rpId);
-    assertWebAuthnAvailable(normalizedRpId);
-    try {
-      const credential = await root.navigator.credentials.create(
-        makeWebAuthnPrfCreationOptions(prfSalt, normalizedRpId)
-      );
-      if (!credential || !credential.rawId) {
-        throw new Error(MSG_WEBAUTHN_CREDENTIAL_CREATION);
-      }
-      return credential;
-    } catch (error) {
-      throw new Error(MSG_WEBAUTHN_CREDENTIAL_CREATION_FAILED + describeWebAuthnDomError(error) + ".");
-    }
-  }
-
-  async function requestWebAuthnPrfOutput(credentialIdBase64Url, prfSalt, rpId) {
-    const normalizedRpId = normalizeRpId(rpId);
-    assertWebAuthnAvailable(normalizedRpId);
-    try {
-      const assertion = await root.navigator.credentials.get(
-        makeBoundWebAuthnPrfRequestOptions(credentialIdBase64Url, prfSalt, normalizedRpId)
-      );
-      if (!assertion || !assertion.rawId) {
-        throw new Error(MSG_WEBAUTHN_CREDENTIAL_REQUEST);
-      }
-      const returnedCredentialId = base64UrlEncode(toUint8Array(assertion.rawId));
-      if (returnedCredentialId !== credentialIdBase64Url) {
-        throw new Error(MSG_WEBAUTHN_DIFFERENT_CREDENTIAL);
-      }
-      const prfOutput = getPrfFirstResult(assertion);
-      if (!prfOutput) {
-        throw new Error(MSG_WEBAUTHN_NO_PRF_RESULT);
-      }
-      return prfOutput;
-    } catch (error) {
-      if (error && error.message && error.message.startsWith(MSG_WEBAUTHN_NO_PRF_RESULT)) {
-        throw error;
-      }
-      if (error && error.message && error.message.startsWith(MSG_WEBAUTHN_DIFFERENT_CREDENTIAL)) {
-        throw error;
-      }
-      throw new Error(MSG_WEBAUTHN_CREDENTIAL_REQUEST_FAILED + describeWebAuthnDomError(error) + ".");
-    }
-  }
-
-  async function requestDiscoverableWebAuthnPrfOutput(prfSalt, rpId) {
-    const normalizedRpId = normalizeRpId(rpId);
-    assertWebAuthnAvailable(normalizedRpId);
-    try {
-      const assertion = await root.navigator.credentials.get(
-        makeDiscoverableWebAuthnPrfRequestOptions(prfSalt, normalizedRpId)
-      );
-      if (!assertion || !assertion.rawId) {
-        throw new Error(MSG_WEBAUTHN_CREDENTIAL_REQUEST);
-      }
-      const credentialIdBase64Url = base64UrlEncode(toUint8Array(assertion.rawId));
-      const prfOutput = getPrfFirstResult(assertion);
-      if (!prfOutput) {
-        throw new Error(MSG_WEBAUTHN_NO_PRF_RESULT);
-      }
-      return {
-        credentialIdBase64Url,
-        prfOutput
-      };
-    } catch (error) {
-      if (error && error.message && error.message.startsWith(MSG_WEBAUTHN_NO_PRF_RESULT)) {
-        throw error;
-      }
-      throw new Error(MSG_EXISTING_PASSKEY_REQUEST_FAILED + describeWebAuthnDomError(error) + ".");
-    }
-  }
-
-  // HKDF profile:
-  // IKM  = WebAuthn prf.results.first
-  // salt = UTF8(WEBAUTHN_HKDF_SALT_LABEL) || 0x00 || protected-header ps
-  // info = UTF8(WEBAUTHN_HKDF_INFO_LABEL) || 0x00 || UTF8(rp) || 0x00 || cid
-  // L    = 32 bytes for A256GCM
-  async function deriveWebAuthnDirectKeyBytes(prfOutput, metadata) {
-    const crypto = getCrypto();
-    const prfBytes = toUint8Array(prfOutput);
-    if (prfBytes.length !== AES_256_KEY_BYTES) {
-      throw new Error(MSG_INVALID_PRF_OUTPUT_SIZE);
-    }
-    const credentialId = toUint8Array(metadata.credentialId);
-    const prfSalt = toUint8Array(metadata.prfSalt);
-    if (prfSalt.length !== WEBAUTHN_PRF_SALT_BYTES) {
-      throw new Error(MSG_INVALID_PRF_SALT_SIZE);
-    }
-    const key = await crypto.subtle.importKey(
-      "raw",
-      prfBytes,
-      "HKDF",
-      false,
-      ["deriveBits"]
-    );
-    const bits = await crypto.subtle.deriveBits(
-      {
-        name: "HKDF",
-        hash: "SHA-256",
-        salt: concatBytes(utf8Encode(WEBAUTHN_HKDF_SALT_LABEL), new Uint8Array([0]), prfSalt),
-        info: concatBytes(
-          utf8Encode(WEBAUTHN_HKDF_INFO_LABEL),
-          new Uint8Array([0]),
-          utf8Encode(normalizeRpId(metadata.rpId)),
-          new Uint8Array([0]),
-          credentialId
-        )
-      },
-      key,
-      256
-    );
-    return new Uint8Array(bits);
-  }
-
-  async function encryptWebAuthnJwe(plaintext, options) {
-    const rpId = options && options.rpId ? normalizeRpId(options.rpId) : getCurrentRpId();
-    assertWebAuthnAvailable(rpId);
-    const prfSalt = randomBytes(WEBAUTHN_PRF_SALT_BYTES);
-    const remembered = readRememberedPasskeyCredential(rpId);
-    let credentialIdBase64Url;
-    let prfOutput;
-    try {
-      const selected = await requestDiscoverableWebAuthnPrfOutput(prfSalt, rpId);
-      credentialIdBase64Url = selected.credentialIdBase64Url;
-      prfOutput = selected.prfOutput;
-      rememberPasskeyCredential(rpId, credentialIdBase64Url);
-    } catch (discoverableError) {
-      if (remembered) {
-        credentialIdBase64Url = remembered.credentialIdBase64Url;
-        prfOutput = await requestWebAuthnPrfOutput(credentialIdBase64Url, prfSalt, rpId);
-      } else {
-        if (!getPasskeyStorage()) {
-          throw new Error(MSG_NO_STORAGE);
-        }
-        const credential = await createWebAuthnPrfCredential(prfSalt, rpId);
-        credentialIdBase64Url = base64UrlEncode(toUint8Array(credential.rawId));
-        const prfEnabled = getPrfEnabledResult(credential);
-        if (prfEnabled === false) {
-          throw new Error(MSG_WEBAUTHN_PRF_DISABLED);
-        }
-        prfOutput = getPrfFirstResult(credential);
-        if (!prfOutput) {
-          prfOutput = await requestWebAuthnPrfOutput(credentialIdBase64Url, prfSalt, rpId);
-        }
-        rememberPasskeyCredential(rpId, credentialIdBase64Url);
-      }
-    }
-    const header = makeWebAuthnProtectedHeader(credentialIdBase64Url, rpId, prfSalt);
-    const metadata = validateDirectHeader(header);
-    const directKey = await deriveWebAuthnDirectKeyBytes(prfOutput, metadata);
-    return encryptDirectJwe(plaintext, directKey, header, options);
-  }
-
-  async function decryptWebAuthnJwe(compactJwe, options) {
-    const parts = splitCompactJwe(compactJwe);
-    const header = parseProtectedHeader(parts.protectedSegment);
-    const metadata = validateDirectHeader(header);
-    const currentRpId = options && options.rpId ? normalizeRpId(options.rpId) : getCurrentRpId();
-    if (currentRpId && currentRpId !== metadata.rpId) {
-      throw new Error(MSG_WEBAUTHN_DIFFERENT_RP + metadata.rpId + MSG_WEBAUTHN_DIFFERENT_RP_PAGE + currentRpId + ".");
-    }
-    const prfOutput = await requestWebAuthnPrfOutput(
-      metadata.credentialIdBase64Url,
-      metadata.prfSalt,
-      metadata.rpId
-    );
-    const directKey = await deriveWebAuthnDirectKeyBytes(prfOutput, metadata);
-    try {
-      return await decryptDirectJwe(compactJwe, directKey);
-    } catch (error) {
-      throw new Error(MSG_WEBAUTHN_WRONG_CREDENTIAL);
-    }
-  }
-
   // Recovery input can be a raw payload or a full URL scanned from an encrypted
   // QR. Only recognized fragments are extracted; ordinary URLs remain plain
   // strings so plain mode can encode URLs without surprise behavior.
@@ -1137,100 +740,6 @@
     };
   }
 
-  // Draw the library-provided module matrix onto a canvas. This is rendering
-  // code only; it does not implement QR encoding or error correction.
-  function drawQrToCanvas(canvas, text) {
-    const plan = getQrRenderPlan(text);
-    canvas.width = plan.pixelSize;
-    canvas.height = plan.pixelSize;
-    canvas.dataset.qrVersion = String(plan.version);
-    canvas.dataset.qrModuleCount = String(plan.moduleCount);
-    canvas.dataset.qrModulePixels = String(plan.modulePixels);
-
-    const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#000000";
-
-    for (let row = 0; row < plan.moduleCount; row += 1) {
-      for (let col = 0; col < plan.moduleCount; col += 1) {
-        if (plan.qr.isDark(row, col)) {
-          ctx.fillRect(
-            (col + plan.marginModules) * plan.modulePixels,
-            (row + plan.marginModules) * plan.modulePixels,
-            plan.modulePixels,
-            plan.modulePixels
-          );
-        }
-      }
-    }
-
-    return plan;
-  }
-
-  // Canvas output needs manual wrapping because the recovered secret is not
-  // inserted as normal DOM text.
-  function wrapCanvasText(ctx, text, maxWidth) {
-    const paragraphs = String(text).split(/\r?\n/);
-    const lines = [];
-    for (const paragraph of paragraphs) {
-      const words = paragraph.length ? paragraph.split(/(\s+)/).filter(Boolean) : [""];
-      let line = "";
-      for (const word of words) {
-        const test = line + word;
-        if (ctx.measureText(test).width <= maxWidth || line === "") {
-          line = test;
-          continue;
-        }
-        lines.push(line.trimEnd());
-        line = word.trimStart();
-        while (ctx.measureText(line).width > maxWidth && line.length > 1) {
-          let split = 1;
-          while (split < line.length && ctx.measureText(line.slice(0, split + 1)).width <= maxWidth) {
-            split += 1;
-          }
-          lines.push(line.slice(0, split));
-          line = line.slice(split);
-        }
-      }
-      lines.push(line);
-    }
-    return lines;
-  }
-
-  // Recovered secrets are drawn to canvas and auto-hidden. This is UI hygiene,
-  // not a cryptographic guarantee; copying still places content on the system
-  // clipboard.
-  function renderSecretToCanvas(canvas, text) {
-    const width = 900;
-    const contextForMeasure = canvas.getContext("2d");
-    contextForMeasure.font = "20px ui-monospace, SFMono-Regular, Consolas, monospace";
-    const lines = wrapCanvasText(contextForMeasure, text, width - 56);
-    const lineHeight = 29;
-    const height = Math.max(180, Math.min(1200, 52 + lines.length * lineHeight));
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#17202a";
-    ctx.font = "20px ui-monospace, SFMono-Regular, Consolas, monospace";
-    ctx.textBaseline = "top";
-    const maxLines = Math.floor((height - 52) / lineHeight);
-    for (let index = 0; index < Math.min(lines.length, maxLines); index += 1) {
-      ctx.fillText(lines[index], 28, 26 + index * lineHeight);
-    }
-    if (lines.length > maxLines) {
-      ctx.fillStyle = "#b42318";
-      ctx.fillText(MSG_TRUNCATED_OUTPUT, 28, height - 30);
-    }
-  }
-
-  function setHidden(element, hidden) {
-    element.classList.toggle("hidden", hidden);
-  }
-
   // Fragment-only URLs open directly into recovery mode. The fragment is not
   // sent to the server during normal HTTP requests.
   function getFragmentPayload() {
@@ -1288,437 +797,6 @@
     return baseUrl + "#" + encodeURIComponent(payload);
   }
 
-  // Prefer the async Clipboard API on secure origins. The textarea fallback is
-  // only for copying already-visible generated payload fields.
-  async function copyText(text, fallbackTextArea) {
-    if (root.navigator && root.navigator.clipboard && root.isSecureContext) {
-      await root.navigator.clipboard.writeText(text);
-      return;
-    }
-    if (fallbackTextArea) {
-      fallbackTextArea.focus();
-      fallbackTextArea.select();
-      document.execCommand("copy");
-      fallbackTextArea.setSelectionRange(0, 0);
-      return;
-    }
-    throw new Error(MSG_NO_CLIPBOARD);
-  }
-
-  /*
-   * DOM glue below. The exported functions above are the audit target for data
-   * format, crypto, and QR behavior; this section wires them into the page.
-   */
-  function initDom() {
-    const $ = (id) => document.getElementById(id);
-    const elements = {
-      originLabel: $("origin-label"),
-      secretInput: $("secret-input"),
-      createPassphrase: $("create-passphrase"),
-      createPassphraseConfirm: $("create-passphrase-confirm"),
-      createPassphraseFields: $("passphrase-create-fields"),
-      webauthnCreateFields: $("webauthn-create-fields"),
-      webauthnAck: $("webauthn-ack"),
-      webauthnOriginStatus: $("webauthn-origin-status"),
-      webauthnRpStatus: $("webauthn-rp-status"),
-      webauthnSecureStatus: $("webauthn-secure-status"),
-      webauthnApiStatus: $("webauthn-api-status"),
-      webauthnPrfStatus: $("webauthn-prf-status"),
-      passkeyLabelOutput: $("passkey-label-output"),
-      passkeyOutputDetails: $("passkey-output-details"),
-      createMessage: $("create-message"),
-      createButton: $("create-button"),
-      clearCreateButton: $("clear-create-button"),
-      createError: $("create-error"),
-      outputArea: $("output-area"),
-      payloadOutput: $("payload-output"),
-      copyPayloadButton: $("copy-payload-button"),
-      copyUrlButton: $("copy-url-button"),
-      downloadCodeButton: $("download-code-button"),
-      printButton: $("print-button"),
-      qrCanvas: $("qr-canvas"),
-      codeModeLabel: $("code-mode-label"),
-      codeDate: $("code-date"),
-      codeChecksum: $("code-checksum"),
-      qrContentOutput: $("qr-content-output"),
-      qrContentField: $("qr-content-field"),
-      recoverPayload: $("recover-payload"),
-      recoverPassphrase: $("recover-passphrase"),
-      recoverPassphraseField: $("recover-passphrase-field"),
-      recoverModeSummary: $("recover-mode-summary"),
-      recoverButton: $("recover-button"),
-      clearRecoverButton: $("clear-recover-button"),
-      recoverError: $("recover-error"),
-      protectedArea: $("protected-area"),
-      protectedCanvas: $("protected-canvas"),
-      hideSecretButton: $("hide-secret-button"),
-      copySecretButton: $("copy-secret-button"),
-      hideCountdown: $("hide-countdown"),
-      copyStatus: $("copy-status")
-    };
-
-    elements.originLabel.textContent = root.location && root.location.origin !== "null"
-      ? root.location.origin
-      : MSG_LOCAL_FILE;
-
-    let latestPayload = "";
-    let latestQrContent = "";
-    let recoveredSecret = "";
-    let hideTimer = 0;
-    let countdownTimer = 0;
-    let hideAt = 0;
-    const clearCreateConfirm = { timer: 0 };
-    const clearRecoverConfirm = { timer: 0 };
-
-    function currentCreateMode() {
-      const checked = document.querySelector("input[name='create-mode']:checked");
-      return checked ? checked.value : "passphrase";
-    }
-
-    function clearError(element) {
-      element.textContent = "";
-    }
-
-    function showError(element, error) {
-      element.textContent = error && error.message ? error.message : String(error);
-    }
-
-    function setCreateMessage(kind, message) {
-      elements.createMessage.className = "mode-message";
-      if (!message) {
-        elements.createMessage.textContent = "";
-        setHidden(elements.createMessage, true);
-        return;
-      }
-      elements.createMessage.classList.add(kind);
-      elements.createMessage.textContent = message;
-      setHidden(elements.createMessage, false);
-    }
-
-    function showCreateError(error) {
-      clearError(elements.createError);
-      setCreateMessage("error", error && error.message ? error.message : String(error));
-    }
-
-    function yesNo(value) {
-      return value ? MSG_YES : MSG_NO;
-    }
-
-    function updateWebAuthnStatus(prfStatus) {
-      const env = getWebAuthnEnvironment();
-      elements.webauthnOriginStatus.textContent = env.origin;
-      elements.webauthnRpStatus.textContent = env.rpId || MSG_UNAVAILABLE;
-      elements.webauthnSecureStatus.textContent = yesNo(env.secureContext);
-      elements.webauthnApiStatus.textContent = yesNo(env.apiAvailable);
-      elements.passkeyLabelOutput.textContent = PASSKEY_LABEL;
-      if (prfStatus) {
-        elements.webauthnPrfStatus.textContent = prfStatus;
-      }
-    }
-
-    function selectCreateMode(mode) {
-      const input = document.querySelector("input[name='create-mode'][value='" + mode + "']");
-      if (input) {
-        input.checked = true;
-      }
-      updateModeUi();
-    }
-
-    function describePasskeyFailure(error) {
-      const detail = error && error.message ? error.message : String(error);
-      if (/secure context|HTTPS|not allowed|origin|RP ID|unavailable/i.test(detail)) {
-        return MSG_WEBAUTHN_SETUP_FAILED;
-      }
-      if (/cancelled|timed out|credential|authenticator|PRF|WebAuthn|not supported/i.test(detail)) {
-        return MSG_WEBAUTHN_SETUP_CANCELLED;
-      }
-      return MSG_WEBAUTHN_SETUP_GENERIC;
-    }
-
-    function describePasskeyRecoveryFailure(error) {
-      const detail = error && error.message ? error.message : String(error);
-      if (/created for RP ID|origin|RP ID|site/i.test(detail)) {
-        return MSG_WEBAUTHN_RECOVERY_DIFFERENT_SITE;
-      }
-      if (/cancelled|timed out|credential|authenticator|PRF|WebAuthn|not supported|unavailable/i.test(detail)) {
-        return MSG_WEBAUTHN_RECOVERY_FAILED;
-      }
-      return MSG_WEBAUTHN_RECOVERY_GENERIC;
-    }
-
-    function describeRecoverFailure(error) {
-      const detail = error && error.message ? error.message : String(error);
-      const allowedMessages = [
-        MSG_EMPTY_PAYLOAD,
-        MSG_EMPTY_PASSPHRASE,
-        MSG_WRONG_PASSPHRASE,
-        MSG_WEBAUTHN_RECOVERY_DIFFERENT_SITE,
-        MSG_WEBAUTHN_RECOVERY_FAILED,
-        MSG_WEBAUTHN_RECOVERY_GENERIC
-      ];
-      return allowedMessages.includes(detail) ? detail : MSG_UNSUPPORTED_PAYLOAD_TYPE;
-    }
-
-    function updateModeUi() {
-      const mode = currentCreateMode();
-      setHidden(elements.createPassphraseFields, mode !== "passphrase");
-      setHidden(elements.webauthnCreateFields, mode !== "webauthn");
-      if (mode === "plain") {
-        setCreateMessage("warning", MSG_PLAIN_MODE_WARNING);
-      } else if (mode === "webauthn") {
-        setCreateMessage("notice", MSG_WEBAUTHN_MODE_NOTICE);
-      } else {
-        setCreateMessage("", "");
-      }
-    }
-
-    function setAppView(view) {
-      document.body.dataset.view = view === "recover" ? "recover" : "create";
-    }
-
-    function updateRecoverSummary() {
-      clearError(elements.recoverError);
-      setHidden(elements.copyStatus, true);
-      const value = elements.recoverPayload.value;
-      if (!value.trim()) {
-        elements.recoverModeSummary.textContent = MSG_WAITING_FOR_PAYLOAD;
-        setHidden(elements.recoverPassphraseField, false);
-        return;
-      }
-      try {
-        const detected = detectPayload(value);
-        elements.recoverModeSummary.textContent = detected.label;
-        setHidden(elements.recoverPassphraseField, detected.kind !== "passphrase");
-      } catch (error) {
-        elements.recoverModeSummary.textContent = MSG_UNSUPPORTED_PAYLOAD_TYPE;
-      }
-    }
-
-    function renderOutput(payload, modeLabel, modeKind) {
-      latestPayload = payload;
-      latestQrContent = buildQrContent(payload);
-      if (payload.startsWith(ENCRYPTED_PREFIX) && shouldEncodeQrAsUrl() && latestQrContent === payload) {
-        throw new Error(MSG_HOSTED_QR_URL_REQUIRED);
-      }
-      elements.payloadOutput.value = payload;
-      elements.qrContentOutput.value = latestQrContent;
-      setHidden(elements.qrContentField, latestQrContent === payload);
-      elements.codeModeLabel.textContent = modeLabel;
-      elements.codeDate.textContent = new Date().toISOString().slice(0, 10);
-      elements.codeChecksum.textContent = MSG_CHECKSUM_PREFIX + shortChecksum(latestQrContent);
-      setHidden(elements.passkeyOutputDetails, modeKind !== "webauthn");
-      drawQrToCanvas(elements.qrCanvas, latestQrContent);
-      setHidden(elements.outputArea, false);
-    }
-
-    function hideSecret() {
-      recoveredSecret = "";
-      root.clearTimeout(hideTimer);
-      root.clearInterval(countdownTimer);
-      elements.hideCountdown.textContent = "";
-      const ctx = elements.protectedCanvas.getContext("2d");
-      ctx.clearRect(0, 0, elements.protectedCanvas.width, elements.protectedCanvas.height);
-      setHidden(elements.protectedArea, true);
-    }
-
-    function startProtectedDisplay(text) {
-      recoveredSecret = text;
-      setHidden(elements.copyStatus, true);
-      renderSecretToCanvas(elements.protectedCanvas, text);
-      setHidden(elements.protectedArea, false);
-      root.clearTimeout(hideTimer);
-      root.clearInterval(countdownTimer);
-      hideAt = Date.now() + 60000;
-      countdownTimer = root.setInterval(() => {
-        const remaining = Math.max(0, Math.ceil((hideAt - Date.now()) / 1000));
-        elements.hideCountdown.textContent = remaining ? MSG_HIDE_COUNTDOWN_PREFIX + remaining + MSG_HIDE_COUNTDOWN_SUFFIX : "";
-      }, 250);
-      hideTimer = root.setTimeout(hideSecret, 60000);
-    }
-
-    async function createPayload() {
-      clearError(elements.createError);
-      updateModeUi();
-      hideSecret();
-      let mode = currentCreateMode();
-      try {
-        const text = elements.secretInput.value;
-        if (!text) {
-          throw new Error(MSG_EMPTY_SECRET);
-        }
-        mode = currentCreateMode();
-        if (mode === "plain") {
-          renderOutput(encodePlainPayload(text), MSG_PLAIN_MODE_LABEL, "plain");
-          return;
-        }
-        if (mode === "webauthn") {
-          if (!elements.webauthnAck.checked) {
-            throw new Error(MSG_PASSKEY_ACK_REQUIRED);
-          }
-          updateWebAuthnStatus(MSG_PRF_CHECKING);
-          const compactJwe = await encryptWebAuthnJwe(text);
-          renderOutput(ENCRYPTED_PREFIX + compactJwe, MSG_WEBAUTHN_MODE_LABEL, "webauthn");
-          updateWebAuthnStatus(MSG_PRF_SUCCEEDED);
-          return;
-        }
-        const passphrase = elements.createPassphrase.value;
-        const confirm = elements.createPassphraseConfirm.value;
-        if (passphrase !== confirm) {
-          throw new Error(MSG_PASSPHRASE_MISMATCH);
-        }
-        const compactJwe = await encryptPassphraseJwe(text, passphrase);
-        renderOutput(ENCRYPTED_PREFIX + compactJwe, MSG_PASSPHRASE_MODE_LABEL, "passphrase");
-      } catch (error) {
-        if (mode === "webauthn") {
-          if (error && error.message === MSG_PASSKEY_ACK_REQUIRED) {
-            showCreateError(error);
-            return;
-          }
-          selectCreateMode("passphrase");
-          updateWebAuthnStatus(MSG_PRF_FAILED);
-          showCreateError(new Error(describePasskeyFailure(error)));
-          return;
-        }
-        showCreateError(error);
-      }
-    }
-
-    async function recoverPayload() {
-      clearError(elements.recoverError);
-      setHidden(elements.copyStatus, true);
-      hideSecret();
-      try {
-        const detected = detectPayload(elements.recoverPayload.value);
-        if (detected.kind === "plain") {
-          startProtectedDisplay(decodePlainPayload(detected.payload));
-          return;
-        }
-        if (detected.kind === "webauthn") {
-          try {
-            startProtectedDisplay(await decryptWebAuthnJwe(detected.compactJwe));
-          } catch (error) {
-            throw new Error(describePasskeyRecoveryFailure(error));
-          }
-          return;
-        }
-        startProtectedDisplay(await decryptPassphraseJwe(detected.compactJwe, elements.recoverPassphrase.value));
-      } catch (error) {
-        showError(elements.recoverError, new Error(describeRecoverFailure(error)));
-      }
-    }
-
-    function resetClearButton(button, state) {
-      root.clearTimeout(state.timer);
-      state.timer = 0;
-      button.dataset.confirmClear = "";
-      button.textContent = MSG_CLEAR_BUTTON;
-      button.classList.add("secondary");
-      button.classList.remove("danger");
-    }
-
-    function requestClearConfirmation(button, state, clearAction) {
-      if (button.dataset.confirmClear === "true") {
-        resetClearButton(button, state);
-        clearAction();
-        return;
-      }
-      button.dataset.confirmClear = "true";
-      button.textContent = MSG_CONFIRM_BUTTON;
-      button.classList.remove("secondary");
-      button.classList.add("danger");
-      root.clearTimeout(state.timer);
-      state.timer = root.setTimeout(() => resetClearButton(button, state), 3000);
-    }
-
-    function clearCreateForm() {
-      elements.secretInput.value = "";
-      elements.createPassphrase.value = "";
-      elements.createPassphraseConfirm.value = "";
-      elements.webauthnAck.checked = false;
-      elements.payloadOutput.value = "";
-      elements.qrContentOutput.value = "";
-      latestPayload = "";
-      latestQrContent = "";
-      setHidden(elements.outputArea, true);
-      clearError(elements.createError);
-      updateModeUi();
-    }
-
-    function clearRecoverForm() {
-      elements.recoverPayload.value = "";
-      elements.recoverPassphrase.value = "";
-      clearError(elements.recoverError);
-      setHidden(elements.copyStatus, true);
-      updateRecoverSummary();
-      hideSecret();
-    }
-
-    document.querySelectorAll("input[name='create-mode']").forEach((input) => {
-      input.addEventListener("change", updateModeUi);
-    });
-    elements.createButton.addEventListener("click", createPayload);
-    elements.clearCreateButton.addEventListener("click", () => {
-      requestClearConfirmation(elements.clearCreateButton, clearCreateConfirm, clearCreateForm);
-    });
-    elements.copyPayloadButton.addEventListener("click", async () => {
-      try {
-        await copyText(latestPayload, elements.payloadOutput);
-      } catch (error) {
-        showError(elements.createError, error);
-      }
-    });
-    elements.copyUrlButton.addEventListener("click", async () => {
-      try {
-        await copyText(latestQrContent, elements.payloadOutput);
-      } catch (error) {
-        showError(elements.createError, error);
-      }
-    });
-    elements.downloadCodeButton.addEventListener("click", () => {
-      const link = document.createElement("a");
-      link.download = DOWNLOAD_FILENAME;
-      link.href = elements.qrCanvas.toDataURL("image/png");
-      link.click();
-    });
-    elements.printButton.addEventListener("click", () => root.print());
-    elements.recoverPayload.addEventListener("input", updateRecoverSummary);
-    elements.recoverButton.addEventListener("click", recoverPayload);
-    elements.clearRecoverButton.addEventListener("click", () => {
-      requestClearConfirmation(elements.clearRecoverButton, clearRecoverConfirm, clearRecoverForm);
-    });
-    elements.hideSecretButton.addEventListener("click", hideSecret);
-    elements.copySecretButton.addEventListener("click", async () => {
-      if (!recoveredSecret) {
-        return;
-      }
-      try {
-        await copyText(recoveredSecret);
-        hideSecret();
-        elements.copyStatus.textContent = MSG_COPY_SUCCESS;
-        setHidden(elements.copyStatus, false);
-      } catch (error) {
-        showError(elements.recoverError, error);
-      }
-    });
-    root.addEventListener("blur", hideSecret);
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) {
-        hideSecret();
-      }
-    });
-
-    const fragmentPayload = getFragmentPayload();
-    setAppView(determineInitialView(root.location));
-    if (fragmentPayload) {
-      elements.recoverPayload.value = fragmentPayload;
-      updateRecoverSummary();
-    } else {
-      updateRecoverSummary();
-    }
-    updateWebAuthnStatus();
-    updateModeUi();
-  }
-
   const api = {
     ENCRYPTED_PREFIX,
     PLAIN_PREFIX,
@@ -1726,6 +804,10 @@
     base64UrlDecode,
     utf8Encode,
     utf8Decode,
+    toUint8Array,
+    randomBytes,
+    concatBytes,
+    getCrypto,
     encodePlainPayload,
     decodePlainPayload,
     encryptPassphraseJwe,
@@ -1733,40 +815,27 @@
     encryptDirectJwe,
     decryptDirectJwe,
     makeWebAuthnProtectedHeader,
-    makeWebAuthnCredentialDescriptor,
-    makeWebAuthnPrfCreationOptions,
-    makeDiscoverableWebAuthnPrfRequestOptions,
-    makeBoundWebAuthnPrfRequestOptions,
     validateDirectHeader,
-    deriveWebAuthnDirectKeyBytes,
     getCurrentRpId,
-    getWebAuthnEnvironment,
-    encryptWebAuthnJwe,
-    decryptWebAuthnJwe,
+    normalizeRpId,
     extractPayloadFromInput,
     detectPayload,
     parseProtectedHeader,
     validatePassphraseHeader,
     splitCompactJwe,
     determineInitialView,
+    getFragmentPayload,
     getRecoveryBaseUrl,
     shouldEncodeQrAsUrl,
     buildQrContent,
     shortChecksum,
     createQrCode,
-    getQrRenderPlan,
-    drawQrToCanvas
+    getQrRenderPlan
   };
 
-  root.ERKApp = api;
+  root.ERKApp = Object.assign(root.ERKApp || {}, api);
+
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = api;
-  }
-  if (typeof document !== "undefined") {
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", initDom);
-    } else {
-      initDom();
-    }
+    module.exports = root.ERKApp;
   }
 })(typeof globalThis !== "undefined" ? globalThis : window);

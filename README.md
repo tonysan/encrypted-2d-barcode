@@ -212,7 +212,7 @@ The build currently copies:
 - Lockfile integrity: `sha512-HM7yY8O2ilqhmULxGMpcHSF1EhJJ9yBj8gvDEuZ6M+KGJ0YY2hKpnXvRD+hZPLrDVck3ExIGhmPtSdcjC+guuw==`
 - Purpose: QR Code matrix generation for recovery URLs.
 
-The v1 runtime still uses browser Web Crypto and a local strict-profile JWE Compact implementation in `app.js`. Recovery is handled through URL fragments or manual paste; the app does not request camera access.
+The v1 runtime still uses browser Web Crypto and local strict-profile JWE Compact code in `static/app.js` plus passkey support in `static/passkey.js`. Recovery is handled through URL fragments or manual paste; the app does not request camera access.
 
 ## License
 

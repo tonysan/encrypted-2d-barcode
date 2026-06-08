@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const app = require("../static/app.js");
+const app = require("../static/init.js");
 
 async function rejectsWith(fn, pattern) {
   let rejected = false;
