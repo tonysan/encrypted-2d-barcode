@@ -24,10 +24,9 @@ This repository now has a no-build static app with the Phase 1-6 core started:
 - Local QR-compatible 2D barcode generation.
 - Manual paste recovery.
 - URL-fragment import/export.
-- WebAuthn PRF environment probe.
-- Advanced WebAuthn PRF encrypted payload creation and recovery.
+- Advanced passkey encrypted payload creation and recovery.
 
-WebAuthn PRF still needs manual validation on the hosted HTTPS deployment before it should be trusted for real recovery workflows.
+Passkey mode still needs manual validation on the hosted HTTPS deployment before it should be trusted for real recovery workflows.
 
 The deployable browser app lives in [static/](static/). Repository root contains docs, tests, and project metadata.
 
@@ -41,7 +40,7 @@ See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the phased build plan.
 - Generate a QR-compatible 2D barcode from the output payload.
 - Recover encrypted codes by opening the generated QR URL, or by pasting a payload in the same static app.
 - Support passphrase recovery from a local or offline copy where browser APIs allow.
-- Support WebAuthn PRF later as an advanced browser-native mode on compatible HTTPS origins.
+- Support passkey recovery as an advanced browser-native mode on compatible HTTPS origins.
 
 ## Planned Modes
 
@@ -70,9 +69,11 @@ enc = A256GCM
 
 `ERK1` is only an app marker. It is not a custom encryption envelope.
 
-### WebAuthn PRF Mode
+### Passkey Mode
 
 Advanced encrypted mode for compatible browsers, authenticators, and HTTPS origins.
+
+Passkey support is checked when the user creates a passkey-protected code. If the browser or unlock device cannot provide the required key material, the app switches back to passphrase mode.
 
 Payload format:
 
@@ -171,7 +172,7 @@ When opened from a local file or non-web origin, encrypted QR codes contain the 
 ERK1.<compact-jwe>
 ```
 
-For WebAuthn PRF mode, create codes from the final stable custom HTTPS domain. WebAuthn recovery is origin/RP ID bound.
+For passkey mode, create codes from the final stable custom HTTPS domain. Passkey recovery is origin/RP ID bound.
 
 The page is mode-aware:
 

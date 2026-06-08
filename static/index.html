@@ -35,38 +35,9 @@
           </label>
           <label>
             <input type="radio" name="create-mode" value="webauthn">
-            <span>WebAuthn PRF</span>
+            <span>Passkey</span>
           </label>
         </fieldset>
-
-        <div class="webauthn-support" aria-labelledby="webauthn-support-title">
-          <div class="support-heading">
-            <h3 id="webauthn-support-title">WebAuthn PRF support</h3>
-            <button id="prf-probe-button" type="button" class="secondary">Run PRF Probe</button>
-          </div>
-          <dl class="support-grid">
-            <div>
-              <dt>Origin</dt>
-              <dd id="webauthn-origin-status">-</dd>
-            </div>
-            <div>
-              <dt>RP ID</dt>
-              <dd id="webauthn-rp-status">-</dd>
-            </div>
-            <div>
-              <dt>Secure context</dt>
-              <dd id="webauthn-secure-status">-</dd>
-            </div>
-            <div>
-              <dt>API</dt>
-              <dd id="webauthn-api-status">-</dd>
-            </div>
-            <div>
-              <dt>PRF probe</dt>
-              <dd id="webauthn-prf-status">Not run</dd>
-            </div>
-          </dl>
-        </div>
 
         <div id="plain-warning" class="warning hidden" role="status">
           Plain mode is not encrypted. Anyone who scans the code can read the string.
@@ -90,12 +61,37 @@
 
         <div id="webauthn-create-fields" class="webauthn-create-fields hidden">
           <div class="notice" role="status">
-            Advanced mode creates one credential for this code and needs the same origin, RP ID, and credential to recover.
+            Passkey mode is advanced. It only works when this browser and your unlock device support it, and recovery must happen from this same site.
           </div>
           <label class="check-field">
             <input id="webauthn-ack" type="checkbox">
-            <span>I understand this code depends on this WebAuthn credential and RP ID.</span>
+            <span>I understand I need this same passkey setup on this site to recover this code.</span>
           </label>
+          <details class="tech-details passkey-tech-details">
+            <summary>Passkey technical details</summary>
+            <dl class="support-grid">
+              <div>
+                <dt>Origin</dt>
+                <dd id="webauthn-origin-status">-</dd>
+              </div>
+              <div>
+                <dt>RP ID</dt>
+                <dd id="webauthn-rp-status">-</dd>
+              </div>
+              <div>
+                <dt>Secure context</dt>
+                <dd id="webauthn-secure-status">-</dd>
+              </div>
+              <div>
+                <dt>WebAuthn API</dt>
+                <dd id="webauthn-api-status">-</dd>
+              </div>
+              <div>
+                <dt>PRF check</dt>
+                <dd id="webauthn-prf-status">Runs when creating</dd>
+              </div>
+            </dl>
+          </details>
         </div>
 
         <div class="actions">

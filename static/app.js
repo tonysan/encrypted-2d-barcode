@@ -877,7 +877,7 @@
           kind: "webauthn",
           payload,
           compactJwe,
-          label: "WebAuthn PRF encrypted payload"
+          label: "Passkey encrypted payload"
         };
       }
       throw new Error("Unsupported encrypted payload.");
@@ -1123,7 +1123,6 @@
       webauthnSecureStatus: $("webauthn-secure-status"),
       webauthnApiStatus: $("webauthn-api-status"),
       webauthnPrfStatus: $("webauthn-prf-status"),
-      prfProbeButton: $("prf-probe-button"),
       plainWarning: $("plain-warning"),
       createButton: $("create-button"),
       clearCreateButton: $("clear-create-button"),
@@ -1192,6 +1191,36 @@
       if (prfStatus) {
         elements.webauthnPrfStatus.textContent = prfStatus;
       }
+    }
+
+    function selectCreateMode(mode) {
+      const input = document.querySelector("input[name='create-mode'][value='" + mode + "']");
+      if (input) {
+        input.checked = true;
+      }
+      updateModeUi();
+    }
+
+    function describePasskeyFailure(error) {
+      const detail = error && error.message ? error.message : String(error);
+      if (/secure context|HTTPS|not allowed|origin|RP ID|unavailable/i.test(detail)) {
+        return "Passkey setup failed on this site. I switched back to passphrase mode.";
+      }
+      if (/cancelled|timed out|credential|authenticator|PRF|WebAuthn|not supported/i.test(detail)) {
+        return "Passkey setup was not completed or is not supported here. I switched back to passphrase mode.";
+      }
+      return "Passkey setup failed. I switched back to passphrase mode.";
+    }
+
+    function describePasskeyRecoveryFailure(error) {
+      const detail = error && error.message ? error.message : String(error);
+      if (/created for RP ID|origin|RP ID|site/i.test(detail)) {
+        return "This code was created for a different site. Open it from the original site and try again.";
+      }
+      if (/cancelled|timed out|credential|authenticator|PRF|WebAuthn|not supported|unavailable/i.test(detail)) {
+        return "Passkey recovery failed. Use the same passkey setup on the original site.";
+      }
+      return "Passkey recovery failed.";
     }
 
     function updateModeUi() {
@@ -1265,23 +1294,25 @@
     async function createPayload() {
       clearError(elements.createError);
       hideSecret();
+      let mode = currentCreateMode();
       try {
         const text = elements.secretInput.value;
         if (!text) {
           throw new Error("Enter a string first.");
         }
-        const mode = currentCreateMode();
+        mode = currentCreateMode();
         if (mode === "plain") {
           renderOutput(encodePlainPayload(text), "Plain unencrypted code");
           return;
         }
         if (mode === "webauthn") {
           if (!elements.webauthnAck.checked) {
-            throw new Error("Confirm the WebAuthn PRF recovery dependency first.");
+            throw new Error("Confirm the passkey recovery dependency first.");
           }
+          updateWebAuthnStatus("Checking on create");
           const compactJwe = await encryptWebAuthnJwe(text);
-          renderOutput(ENCRYPTED_PREFIX + compactJwe, "WebAuthn PRF encrypted code");
-          updateWebAuthnStatus("Succeeded for generated code");
+          renderOutput(ENCRYPTED_PREFIX + compactJwe, "Passkey encrypted code");
+          updateWebAuthnStatus("Succeeded for this code");
           return;
         }
         const passphrase = elements.createPassphrase.value;
@@ -1292,6 +1323,16 @@
         const compactJwe = await encryptPassphraseJwe(text, passphrase);
         renderOutput(ENCRYPTED_PREFIX + compactJwe, "Passphrase encrypted code");
       } catch (error) {
+        if (mode === "webauthn") {
+          if (error && error.message === "Confirm the passkey recovery dependency first.") {
+            showError(elements.createError, error);
+            return;
+          }
+          selectCreateMode("passphrase");
+          updateWebAuthnStatus("Failed; passphrase selected");
+          showError(elements.createError, new Error(describePasskeyFailure(error)));
+          return;
+        }
         showError(elements.createError, error);
       }
     }
@@ -1306,7 +1347,11 @@
           return;
         }
         if (detected.kind === "webauthn") {
-          startProtectedDisplay(await decryptWebAuthnJwe(detected.compactJwe));
+          try {
+            startProtectedDisplay(await decryptWebAuthnJwe(detected.compactJwe));
+          } catch (error) {
+            throw new Error(describePasskeyRecoveryFailure(error));
+          }
           return;
         }
         startProtectedDisplay(await decryptPassphraseJwe(detected.compactJwe, elements.recoverPassphrase.value));
@@ -1330,20 +1375,6 @@
       latestQrContent = "";
       setHidden(elements.outputArea, true);
       clearError(elements.createError);
-    });
-    elements.prfProbeButton.addEventListener("click", async () => {
-      clearError(elements.createError);
-      updateWebAuthnStatus("Running");
-      elements.prfProbeButton.disabled = true;
-      try {
-        const result = await probeWebAuthnPrf();
-        updateWebAuthnStatus("Succeeded via " + result.method);
-      } catch (error) {
-        updateWebAuthnStatus("Failed");
-        showError(elements.createError, error);
-      } finally {
-        elements.prfProbeButton.disabled = false;
-      }
     });
     elements.copyPayloadButton.addEventListener("click", async () => {
       try {

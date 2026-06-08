@@ -201,7 +201,7 @@ async function testWebAuthnPayloadDetection() {
   const compact = await app.encryptDirectJwe("direct secret", zeroKey(), fixedDirectHeader(), { iv: fixedIv() });
   const detected = app.detectPayload(app.ENCRYPTED_PREFIX + compact);
   assert.equal(detected.kind, "webauthn");
-  assert.equal(detected.label, "WebAuthn PRF encrypted payload");
+  assert.equal(detected.label, "Passkey encrypted payload");
 }
 
 async function testWebAuthnHkdfProfile() {

@@ -198,25 +198,6 @@ body[data-view="recover"] .workspace {
   color: var(--muted);
 }
 
-.webauthn-support {
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  padding: 14px 0;
-  margin: 16px 0 4px;
-}
-
-.support-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.support-heading h3 {
-  margin: 0;
-  font-size: 1rem;
-}
-
 .support-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -243,6 +224,11 @@ body[data-view="recover"] .workspace {
 
 .webauthn-create-fields {
   margin-top: 14px;
+}
+
+.passkey-tech-details {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
 }
 
 .check-field {
@@ -444,11 +430,6 @@ button:focus-visible {
   .field-grid,
   .support-grid {
     grid-template-columns: 1fr;
-  }
-
-  .support-heading {
-    align-items: stretch;
-    flex-direction: column;
   }
 
   .actions {
