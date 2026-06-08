@@ -38,32 +38,32 @@
   const DOWNLOAD_FILENAME = "encrypted-2d-barcode.png";
 
   // User-facing messages
-  const MSG_EMPTY_PASSPHRASE = "Passphrase cannot be empty.";
-  const MSG_WRONG_PASSPHRASE = "Wrong passphrase or corrupted payload.";
-  const MSG_EMPTY_PAYLOAD = "Enter a payload first.";
-  const MSG_NO_CLIPBOARD = "Clipboard is unavailable in this context.";
-  const MSG_HOSTED_QR_URL_REQUIRED = "Hosted QR generation must include this page URL.";
-  const MSG_EMPTY_SECRET = "Enter a string first.";
-  const MSG_PASSPHRASE_MISMATCH = "Passphrase confirmation does not match.";
-  const MSG_PASSKEY_ACK_REQUIRED = "Confirm the passkey recovery dependency first.";
-  const MSG_PLAIN_MODE_WARNING = "Plain mode is not encrypted. Anyone who scans the code can read the string.";
-  const MSG_WEBAUTHN_MODE_NOTICE = "Passkey mode is advanced. Use the browser prompt to choose this device, a phone, or a security key. Each code gets a new encryption key.";
-  const MSG_WEBAUTHN_SETUP_FAILED = "Passkey setup failed on this site. I switched back to passphrase mode.";
-  const MSG_WEBAUTHN_SETUP_CANCELLED = "Passkey setup was not completed or is not supported here. I switched back to passphrase mode.";
-  const MSG_WEBAUTHN_SETUP_GENERIC = "Passkey setup failed. I switched back to passphrase mode.";
-  const MSG_WEBAUTHN_RECOVERY_DIFFERENT_SITE = "This code was created for a different site. Open it from the original site and try again.";
-  const MSG_WEBAUTHN_RECOVERY_FAILED = "Passkey recovery failed. Use the same passkey setup on the original site.";
-  const MSG_WEBAUTHN_RECOVERY_GENERIC = "Passkey recovery failed.";
-  const MSG_COPY_SUCCESS = "content is copied to clipboard";
-  const MSG_TRUNCATED_OUTPUT = "[Output truncated on canvas. Use Copy if needed.]";
-  const MSG_WAITING_FOR_PAYLOAD = "Waiting for payload.";
-  const MSG_UNSUPPORTED_PAYLOAD_TYPE = "Unsupported or malformed payload.";
-  const MSG_PLAIN_UNENCRYPTED = "Plain unencrypted payload";
-  const MSG_PASSPHRASE_ENCRYPTED = "Passphrase encrypted payload";
-  const MSG_WEBAUTHN_ENCRYPTED = "Passkey encrypted payload";
-  const MSG_PLAIN_MODE_LABEL = "Plain unencrypted code";
-  const MSG_PASSPHRASE_MODE_LABEL = "Passphrase encrypted code";
-  const MSG_WEBAUTHN_MODE_LABEL = "Passkey encrypted code";
+  const MSG_EMPTY_PASSPHRASE = "Enter a passphrase.";
+  const MSG_WRONG_PASSPHRASE = "That passphrase did not unlock this code.";
+  const MSG_EMPTY_PAYLOAD = "Paste a code or link first.";
+  const MSG_NO_CLIPBOARD = "Copy is not available in this browser or page.";
+  const MSG_HOSTED_QR_URL_REQUIRED = "Open this app from a web address before generating an encrypted code.";
+  const MSG_EMPTY_SECRET = "Enter content first.";
+  const MSG_PASSPHRASE_MISMATCH = "The passphrases do not match.";
+  const MSG_PASSKEY_ACK_REQUIRED = "Confirm that the same passkey is needed to decrypt later.";
+  const MSG_PLAIN_MODE_WARNING = "Plain mode is not encrypted. Anyone who scans the code can read it.";
+  const MSG_WEBAUTHN_MODE_NOTICE = "Passkey mode can use this device, a phone, or a security key. The same passkey can protect many codes.";
+  const MSG_WEBAUTHN_SETUP_FAILED = "Passkey is not available on this site. Switched back to passphrase mode.";
+  const MSG_WEBAUTHN_SETUP_CANCELLED = "Passkey was cancelled or is not supported here. Switched back to passphrase mode.";
+  const MSG_WEBAUTHN_SETUP_GENERIC = "Passkey did not work. Switched back to passphrase mode.";
+  const MSG_WEBAUTHN_RECOVERY_DIFFERENT_SITE = "This code was made for a different site. Open it from the original site and try again.";
+  const MSG_WEBAUTHN_RECOVERY_FAILED = "The passkey did not unlock this code. Use the same passkey on the original site.";
+  const MSG_WEBAUTHN_RECOVERY_GENERIC = "The passkey did not unlock this code.";
+  const MSG_COPY_SUCCESS = "Copied to clipboard.";
+  const MSG_TRUNCATED_OUTPUT = "[Preview shortened. Use Copy if needed.]";
+  const MSG_WAITING_FOR_PAYLOAD = "Waiting for code.";
+  const MSG_UNSUPPORTED_PAYLOAD_TYPE = "This does not look like a supported code.";
+  const MSG_PLAIN_UNENCRYPTED = "Plain text, not encrypted";
+  const MSG_PASSPHRASE_ENCRYPTED = "Passphrase-protected code";
+  const MSG_WEBAUTHN_ENCRYPTED = "Passkey-protected code";
+  const MSG_PLAIN_MODE_LABEL = "Plain code";
+  const MSG_PASSPHRASE_MODE_LABEL = "Passphrase-protected code";
+  const MSG_WEBAUTHN_MODE_LABEL = "Passkey-protected code";
   const MSG_LOCAL_FILE = "local file";
   const MSG_YES = "Yes";
   const MSG_NO = "No";
@@ -71,9 +71,9 @@
   const MSG_CHECKSUM_PREFIX = "Checksum ";
   const MSG_HIDE_COUNTDOWN_PREFIX = "Hides in ";
   const MSG_HIDE_COUNTDOWN_SUFFIX = "s";
-  const MSG_PRF_CHECKING = "Checking site passkey";
-  const MSG_PRF_SUCCEEDED = "Succeeded for this code";
-  const MSG_PRF_FAILED = "Failed; passphrase selected";
+  const MSG_PRF_CHECKING = "Checking passkey";
+  const MSG_PRF_SUCCEEDED = "Passkey ready for this code";
+  const MSG_PRF_FAILED = "Passphrase mode selected";
   const MSG_CLEAR_BUTTON = "Clear";
   const MSG_CONFIRM_BUTTON = "Confirm";
 
@@ -1446,6 +1446,19 @@
       return MSG_WEBAUTHN_RECOVERY_GENERIC;
     }
 
+    function describeRecoverFailure(error) {
+      const detail = error && error.message ? error.message : String(error);
+      const allowedMessages = [
+        MSG_EMPTY_PAYLOAD,
+        MSG_EMPTY_PASSPHRASE,
+        MSG_WRONG_PASSPHRASE,
+        MSG_WEBAUTHN_RECOVERY_DIFFERENT_SITE,
+        MSG_WEBAUTHN_RECOVERY_FAILED,
+        MSG_WEBAUTHN_RECOVERY_GENERIC
+      ];
+      return allowedMessages.includes(detail) ? detail : MSG_UNSUPPORTED_PAYLOAD_TYPE;
+    }
+
     function updateModeUi() {
       const mode = currentCreateMode();
       setHidden(elements.createPassphraseFields, mode !== "passphrase");
@@ -1590,7 +1603,7 @@
         }
         startProtectedDisplay(await decryptPassphraseJwe(detected.compactJwe, elements.recoverPassphrase.value));
       } catch (error) {
-        showError(elements.recoverError, error);
+        showError(elements.recoverError, new Error(describeRecoverFailure(error)));
       }
     }
 

@@ -243,7 +243,7 @@ async function testWebAuthnPayloadDetection() {
   const compact = await app.encryptDirectJwe("direct secret", zeroKey(), fixedDirectHeader(), { iv: fixedIv() });
   const detected = app.detectPayload(app.ENCRYPTED_PREFIX + compact);
   assert.equal(detected.kind, "webauthn");
-  assert.equal(detected.label, "Passkey encrypted payload");
+  assert.equal(detected.label, "Passkey-protected code");
 }
 
 async function testWebAuthnHkdfProfile() {
@@ -271,13 +271,13 @@ async function testWebAuthnHkdfProfile() {
 async function testEmptyPassphraseRejection() {
   await rejectsWith(
     () => app.encryptPassphraseJwe("secret string", "", { p2c: 1500 }),
-    /Passphrase cannot be empty/
+    /Enter a passphrase/
   );
 
   const compact = await app.encryptPassphraseJwe("secret string", "x", { p2c: 1500 });
   await rejectsWith(
     () => app.decryptPassphraseJwe(compact, ""),
-    /Passphrase cannot be empty/
+    /Enter a passphrase/
   );
 }
 
@@ -285,7 +285,7 @@ async function testWrongPassphrase() {
   const compact = await app.encryptPassphraseJwe("secret string", "this is a long passphrase", { p2c: 1500 });
   await rejectsWith(
     () => app.decryptPassphraseJwe(compact, "this is the wrong pass"),
-    /Wrong passphrase|corrupted/
+    /passphrase did not unlock/
   );
 }
 
@@ -295,7 +295,7 @@ async function testCorruptedPayload() {
   parts[3] = (parts[3][0] === "A" ? "B" : "A") + parts[3].slice(1);
   await rejectsWith(
     () => app.decryptPassphraseJwe(parts.join("."), "this is a long passphrase"),
-    /Wrong passphrase|corrupted/
+    /passphrase did not unlock/
   );
 }
 

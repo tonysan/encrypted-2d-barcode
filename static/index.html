@@ -11,7 +11,7 @@
     <header class="app-header">
       <div>
         <h1><a href="./" title="Encrypt 2D Barcode">Encrypt 2D Barcode</a></h1>
-        <p>Static local string encryption with printable recovery codes.</p>
+        <p>Create printable codes for text, with optional encryption.</p>
       </div>
       <a class="repo-link" href="https://github.com/tonysan/encrypted-2d-barcode" target="_blank" rel="noopener noreferrer">GitHub</a>
     </header>
@@ -20,18 +20,18 @@
       <section class="panel create-panel" aria-labelledby="create-title">
         <div class="panel-heading">
           <h2 id="create-title">Create</h2>
-          <span class="phase-badge">Phases 6</span>
+          <span class="phase-badge">Static app</span>
         </div>
 
         <fieldset class="mode-picker">
           <legend>Mode</legend>
           <label>
             <input type="radio" name="create-mode" value="plain">
-            <span>Plain</span>
+            <span>Plain text</span>
           </label>
           <label>
             <input type="radio" name="create-mode" value="passphrase" checked>
-            <span>Passphrase Protected</span>
+            <span>Passphrase</span>
           </label>
           <label>
             <input type="radio" name="create-mode" value="webauthn">
@@ -43,13 +43,13 @@
 
         <label class="field">
           <span>Content</span>
-          <textarea id="secret-input" rows="8" autocomplete="off" spellcheck="false" placeholder="Enter the content to encode (url, text...)"></textarea>
+          <textarea id="secret-input" rows="8" autocomplete="off" spellcheck="false" placeholder="Enter text or a URL"></textarea>
         </label>
 
         <div id="passphrase-create-fields" class="field-grid">
           <label class="field">
             <span>Passphrase</span>
-            <input id="create-passphrase" type="password" autocomplete="new-password" placeholder="Recommend 16 characters or more">
+            <input id="create-passphrase" type="password" autocomplete="new-password" placeholder="Use 16+ characters if you can">
           </label>
           <label class="field">
             <span>Confirm</span>
@@ -60,7 +60,7 @@
         <div id="webauthn-create-fields" class="webauthn-create-fields hidden">
           <label class="check-field">
             <input id="webauthn-ack" type="checkbox">
-            <span>I understand I need this passkey setup on this site to decrypt passkey codes.</span>
+            <span>I understand I need the same passkey on this site to decrypt these codes later.</span>
           </label>
         </div>
 
@@ -78,7 +78,7 @@
               <span id="code-date"></span>
               <span id="code-checksum"></span>
             </div>
-            <canvas id="qr-canvas" width="680" height="680" aria-label="2D barcode recovery URL or payload"></canvas>
+            <canvas id="qr-canvas" width="680" height="680" aria-label="2D barcode for this code"></canvas>
           </div>
 
           <div class="actions wrap code-actions">
@@ -89,14 +89,14 @@
           <details class="tech-details">
             <summary>Technical details</summary>
             <label class="field compact-field">
-              <span>Payload</span>
+              <span>Code data</span>
               <div class="copy-row">
                 <input id="payload-output" type="text" readonly spellcheck="false">
                 <button id="copy-payload-button" type="button" class="secondary">Copy</button>
               </div>
             </label>
             <label class="field compact-field" id="qr-content-field">
-              <span>QR content</span>
+              <span>Barcode data</span>
               <div class="copy-row">
                 <input id="qr-content-output" type="text" readonly spellcheck="false">
                 <button id="copy-url-button" type="button" class="secondary">Copy</button>
@@ -110,24 +110,24 @@
                   <dd id="passkey-label-output">-</dd>
                 </div>
                 <div>
-                  <dt>Origin</dt>
+                  <dt>Page</dt>
                   <dd id="webauthn-origin-status">-</dd>
                 </div>
                 <div>
-                  <dt>RP ID</dt>
+                  <dt>Site ID</dt>
                   <dd id="webauthn-rp-status">-</dd>
                 </div>
                 <div>
-                  <dt>Secure context</dt>
+                  <dt>Secure page</dt>
                   <dd id="webauthn-secure-status">-</dd>
                 </div>
                 <div>
-                  <dt>WebAuthn API</dt>
+                  <dt>Passkey support</dt>
                   <dd id="webauthn-api-status">-</dd>
                 </div>
                 <div>
-                  <dt>PRF check</dt>
-                  <dd id="webauthn-prf-status">Runs on create</dd>
+                  <dt>Passkey check</dt>
+                  <dd id="webauthn-prf-status">Runs when generated</dd>
                 </div>
               </dl>
             </div>
@@ -142,11 +142,11 @@
         </div>
 
         <label class="field">
-          <span>Encrypted content</span>
-          <input id="recover-payload" type="text" spellcheck="false" autocomplete="off" placeholder="Paste https://.../#ERK1..., ERK1..., or plain text">
+          <span>Code or link</span>
+          <input id="recover-payload" type="text" spellcheck="false" autocomplete="off" placeholder="Paste a recovery link, code, or plain text">
         </label>
 
-        <div id="recover-mode-summary" class="mode-summary">Waiting for payload.</div>
+        <div id="recover-mode-summary" class="mode-summary">Waiting for code.</div>
 
         <label class="field" id="recover-passphrase-field">
           <span>Passphrase</span>
@@ -159,19 +159,19 @@
         </div>
 
         <div id="recover-error" class="error" role="alert"></div>
-        <div id="copy-status" class="notice hidden" role="status">content is copied to clipboard</div>
+        <div id="copy-status" class="notice hidden" role="status">Copied to clipboard.</div>
 
         <div id="protected-area" class="protected-area hidden">
           <div class="protected-toolbar">
-            <strong>Recovered string</strong>
+            <strong>Recovered content</strong>
             <span id="hide-countdown"></span>
           </div>
-          <canvas id="protected-canvas" width="900" height="360" aria-label="Recovered string is rendered on canvas"></canvas>
+          <canvas id="protected-canvas" width="900" height="360" aria-label="Recovered content"></canvas>
           <div class="actions wrap">
             <button id="hide-secret-button" type="button" class="secondary">Hide</button>
             <button id="copy-secret-button" type="button" class="secondary">Copy</button>
           </div>
-          <p class="hint">Canvas display reduces casual DOM exposure. It does not protect against a compromised browser, OS, extension, screenshot, screen recorder, or keylogger.</p>
+          <p class="hint">The result hides automatically. Your browser, device, extensions, screenshots, screen recorders, clipboard, and keyboard can still expose it.</p>
         </div>
       </section>
     </main>
