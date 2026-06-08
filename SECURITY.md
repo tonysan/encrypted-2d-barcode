@@ -70,6 +70,8 @@ info = UTF8("ERK1 WebAuthn PRF A256GCM direct key v1") || 0x00 || UTF8(rp) || 0x
 L    = 32 bytes
 ```
 
+The app may store the non-secret credential ID locally to reuse one site passkey for future codes. It must not store plaintext, PRF output, derived keys, passphrases, or credential secrets in browser storage.
+
 Unsupported algorithms, unsupported headers, remote key references, compression, and unreviewed JWE behavior must fail closed.
 
 ## Dependency Policy

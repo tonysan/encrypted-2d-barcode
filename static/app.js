@@ -29,6 +29,7 @@
   const WEBAUTHN_TIMEOUT_MS = 120000;
   const WEBAUTHN_HKDF_SALT_LABEL = "encrypted-2d-barcode WebAuthn PRF HKDF salt v1";
   const WEBAUTHN_HKDF_INFO_LABEL = "ERK1 WebAuthn PRF A256GCM direct key v1";
+  const PASSKEY_CREDENTIAL_STORAGE_KEY = "erk1.passkeyCredential.v1";
 
   // Web Crypto is the security boundary. Node's webcrypto fallback lets tests
   // exercise the same API shape without adding a crypto dependency.
@@ -545,6 +546,59 @@
     };
   }
 
+  function getPasskeyStorage() {
+    try {
+      if (!root.localStorage) {
+        return null;
+      }
+      const testKey = PASSKEY_CREDENTIAL_STORAGE_KEY + ".test";
+      root.localStorage.setItem(testKey, "1");
+      root.localStorage.removeItem(testKey);
+      return root.localStorage;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function readRememberedPasskeyCredential(rpId) {
+    const storage = getPasskeyStorage();
+    if (!storage) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(storage.getItem(PASSKEY_CREDENTIAL_STORAGE_KEY) || "null");
+      if (!parsed || typeof parsed !== "object") {
+        return null;
+      }
+      if (normalizeRpId(parsed.rpId) !== normalizeRpId(rpId)) {
+        return null;
+      }
+      const credentialIdBase64Url = String(parsed.credentialIdBase64Url || "");
+      if (base64UrlDecode(credentialIdBase64Url).length === 0) {
+        return null;
+      }
+      return {
+        rpId: normalizeRpId(parsed.rpId),
+        credentialIdBase64Url
+      };
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function rememberPasskeyCredential(rpId, credentialIdBase64Url) {
+    const storage = getPasskeyStorage();
+    if (!storage) {
+      throw new Error("Passkey mode needs browser storage for non-secret passkey metadata.");
+    }
+    base64UrlDecode(credentialIdBase64Url);
+    storage.setItem(PASSKEY_CREDENTIAL_STORAGE_KEY, JSON.stringify({
+      version: 1,
+      rpId: normalizeRpId(rpId),
+      credentialIdBase64Url
+    }));
+  }
+
   function assertWebAuthnAvailable(rpId) {
     if (!root.isSecureContext) {
       throw new Error("WebAuthn PRF requires a browser secure context.");
@@ -629,13 +683,14 @@
             { type: "public-key", alg: -257 }
           ],
           authenticatorSelection: {
-            residentKey: "discouraged",
-            requireResidentKey: false,
+            residentKey: "required",
+            requireResidentKey: true,
             userVerification: "preferred"
           },
           attestation: "none",
           timeout: WEBAUTHN_TIMEOUT_MS,
           extensions: {
+            credProps: true,
             prf: {
               eval: {
                 first: saltBytes
@@ -751,15 +806,27 @@
     const rpId = options && options.rpId ? normalizeRpId(options.rpId) : getCurrentRpId();
     assertWebAuthnAvailable(rpId);
     const prfSalt = randomBytes(WEBAUTHN_PRF_SALT_BYTES);
-    const credential = await createWebAuthnPrfCredential(prfSalt, rpId, { label: "code" });
-    const credentialIdBase64Url = base64UrlEncode(toUint8Array(credential.rawId));
-    const prfEnabled = getPrfEnabledResult(credential);
-    if (prfEnabled === false) {
-      throw new Error("Authenticator did not enable WebAuthn PRF for this credential.");
-    }
-    let prfOutput = getPrfFirstResult(credential);
-    if (!prfOutput) {
+    const remembered = readRememberedPasskeyCredential(rpId);
+    let credentialIdBase64Url;
+    let prfOutput;
+    if (remembered) {
+      credentialIdBase64Url = remembered.credentialIdBase64Url;
       prfOutput = await requestWebAuthnPrfOutput(credentialIdBase64Url, prfSalt, rpId);
+    } else {
+      if (!getPasskeyStorage()) {
+        throw new Error("Passkey mode needs browser storage for non-secret passkey metadata.");
+      }
+      const credential = await createWebAuthnPrfCredential(prfSalt, rpId, { label: "site passkey" });
+      credentialIdBase64Url = base64UrlEncode(toUint8Array(credential.rawId));
+      const prfEnabled = getPrfEnabledResult(credential);
+      if (prfEnabled === false) {
+        throw new Error("Authenticator did not enable WebAuthn PRF for this credential.");
+      }
+      prfOutput = getPrfFirstResult(credential);
+      if (!prfOutput) {
+        prfOutput = await requestWebAuthnPrfOutput(credentialIdBase64Url, prfSalt, rpId);
+      }
+      rememberPasskeyCredential(rpId, credentialIdBase64Url);
     }
     const header = makeWebAuthnProtectedHeader(credentialIdBase64Url, rpId, prfSalt);
     const metadata = validateDirectHeader(header);
@@ -786,31 +853,6 @@
     } catch (error) {
       throw new Error("Wrong WebAuthn credential or corrupted payload.");
     }
-  }
-
-  async function probeWebAuthnPrf() {
-    const env = getWebAuthnEnvironment();
-    assertWebAuthnAvailable(env.rpId);
-    const prfSalt = randomBytes(WEBAUTHN_PRF_SALT_BYTES);
-    const credential = await createWebAuthnPrfCredential(prfSalt, env.rpId, { label: "probe" });
-    const credentialIdBase64Url = base64UrlEncode(toUint8Array(credential.rawId));
-    const prfEnabled = getPrfEnabledResult(credential);
-    if (prfEnabled === false) {
-      throw new Error("Authenticator did not enable WebAuthn PRF for the probe credential.");
-    }
-    let prfOutput = getPrfFirstResult(credential);
-    let method = "registration";
-    if (!prfOutput) {
-      prfOutput = await requestWebAuthnPrfOutput(credentialIdBase64Url, prfSalt, env.rpId);
-      method = "assertion";
-    }
-    return {
-      ok: true,
-      origin: env.origin,
-      rpId: env.rpId,
-      outputBytes: prfOutput.length,
-      method
-    };
   }
 
   // Recovery input can be a raw payload or a full URL scanned from an encrypted
@@ -1309,7 +1351,7 @@
           if (!elements.webauthnAck.checked) {
             throw new Error("Confirm the passkey recovery dependency first.");
           }
-          updateWebAuthnStatus("Checking on create");
+          updateWebAuthnStatus("Checking site passkey");
           const compactJwe = await encryptWebAuthnJwe(text);
           renderOutput(ENCRYPTED_PREFIX + compactJwe, "Passkey encrypted code");
           updateWebAuthnStatus("Succeeded for this code");
@@ -1460,7 +1502,6 @@
     getWebAuthnEnvironment,
     encryptWebAuthnJwe,
     decryptWebAuthnJwe,
-    probeWebAuthnPrf,
     extractPayloadFromInput,
     detectPayload,
     parseProtectedHeader,

@@ -61,11 +61,11 @@
 
         <div id="webauthn-create-fields" class="webauthn-create-fields hidden">
           <div class="notice" role="status">
-            Passkey mode is advanced. It only works when this browser and your unlock device support it, and recovery must happen from this same site.
+            Passkey mode is advanced. The first code creates one passkey for this site; later codes reuse it with a new encryption key.
           </div>
           <label class="check-field">
             <input id="webauthn-ack" type="checkbox">
-            <span>I understand I need this same passkey setup on this site to recover this code.</span>
+            <span>I understand I need this passkey setup on this site to recover passkey codes.</span>
           </label>
           <details class="tech-details passkey-tech-details">
             <summary>Passkey technical details</summary>
@@ -88,7 +88,7 @@
               </div>
               <div>
                 <dt>PRF check</dt>
-                <dd id="webauthn-prf-status">Runs when creating</dd>
+                <dd id="webauthn-prf-status">Runs on create</dd>
               </div>
             </dl>
           </details>

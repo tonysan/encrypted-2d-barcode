@@ -76,7 +76,7 @@ Wrong passphrases and corrupted payloads must fail authenticated decryption with
 
 WebAuthn PRF mode is advanced and origin-bound.
 
-The app creates one WebAuthn credential per WebAuthn-encrypted code. The QR payload stores only non-secret recovery metadata needed to request that credential again: credential ID, RP ID, and random PRF salt. It does not store plaintext, PRF output, derived keys, passphrases, or credential secrets in browser storage.
+The app creates one reusable WebAuthn credential for this site. Each QR payload stores only non-secret recovery metadata needed to request that credential again: credential ID, RP ID, and random PRF salt. The app may remember the same non-secret credential ID locally so future passkey codes reuse the site passkey. It does not store plaintext, PRF output, derived keys, passphrases, or credential secrets in browser storage.
 
 Risks:
 

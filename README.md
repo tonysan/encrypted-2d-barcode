@@ -73,7 +73,7 @@ enc = A256GCM
 
 Advanced encrypted mode for compatible browsers, authenticators, and HTTPS origins.
 
-Passkey support is checked when the user creates a passkey-protected code. If the browser or unlock device cannot provide the required key material, the app switches back to passphrase mode.
+The first passkey-protected code creates one reusable passkey for this site. Later passkey-protected codes reuse that passkey, while still getting a fresh encryption key from a new random salt. If the browser or unlock device cannot provide the required key material, the app switches back to passphrase mode.
 
 Payload format:
 
@@ -106,7 +106,7 @@ info = UTF8("ERK1 WebAuthn PRF A256GCM direct key v1") || 0x00 || UTF8(rp) || 0x
 L    = 32 bytes
 ```
 
-This mode is origin/RP ID bound and may become unrecoverable if the original origin, browser support, or credential is unavailable. The app creates one dedicated WebAuthn credential per generated code and stores no plaintext, PRF output, derived key, passphrase, or credential secret in browser storage.
+This mode is origin/RP ID bound and may become unrecoverable if the original origin, browser support, or credential is unavailable. The app reuses one discoverable WebAuthn credential for the site and stores only its non-secret credential ID locally so later codes can use the same passkey. It stores no plaintext, PRF output, derived key, passphrase, or credential secret in browser storage.
 
 ## Data Format Direction
 
