@@ -29,7 +29,7 @@
 
   // User-facing messages
   const MSG_EMPTY_PASSPHRASE = "Enter a passphrase.";
-  const MSG_WRONG_PASSPHRASE = "That passphrase did not decrypt this code.";
+  const MSG_WRONG_PASSPHRASE = "That passphrase did not unlock this code.";
   const MSG_EMPTY_PAYLOAD = "Paste a code or link first.";
   const MSG_NO_CLIPBOARD = "Copy is not available in this browser or page.";
   const MSG_HOSTED_QR_URL_REQUIRED = "Open this app from a web address before generating an encrypted code.";
@@ -42,8 +42,8 @@
   const MSG_WEBAUTHN_SETUP_CANCELLED = "Passkey was cancelled, or not supported. Switched back to passphrase mode.";
   const MSG_WEBAUTHN_SETUP_GENERIC = "Passkey did not work. Switched back to passphrase mode.";
   const MSG_WEBAUTHN_RECOVERY_DIFFERENT_SITE = "This code was made for a different site. Open it from the original site and try again.";
-  const MSG_WEBAUTHN_RECOVERY_FAILED = "The passkey did not decrypt this code. Use the same passkey on the original site.";
-  const MSG_WEBAUTHN_RECOVERY_GENERIC = "The passkey did not decrypt this code.";
+  const MSG_WEBAUTHN_RECOVERY_FAILED = "The passkey did not unlock this code. Use the same passkey on the original site.";
+  const MSG_WEBAUTHN_RECOVERY_GENERIC = "The passkey did not unlock this code.";
   const MSG_COPY_SUCCESS = "Copied to clipboard.";
   const MSG_TRUNCATED_OUTPUT = "[Preview shortened. Use Copy if needed.]";
   const MSG_WAITING_FOR_PAYLOAD = "Waiting for code.";

@@ -534,9 +534,10 @@
     }
 
     function resetClearButton(button, state) {
-      root.clearTimeout(state.timer);
+      root.clearInterval(state.timer);
       state.timer = 0;
       button.dataset.confirmClear = "";
+      button.disabled = false;
       button.textContent = MSG_CLEAR_BUTTON;
       button.classList.add("secondary");
       button.classList.remove("danger");
@@ -548,12 +549,28 @@
         clearAction();
         return;
       }
-      button.dataset.confirmClear = "true";
-      button.textContent = MSG_CONFIRM_BUTTON;
+      if (button.dataset.confirmClear === "pending") {
+        return;
+      }
+      button.dataset.confirmClear = "pending";
+      button.disabled = true;
       button.classList.remove("secondary");
       button.classList.add("danger");
-      root.clearTimeout(state.timer);
-      state.timer = root.setTimeout(() => resetClearButton(button, state), 3000);
+      state.remaining = 3;
+      button.textContent = MSG_CONFIRM_BUTTON + " (" + state.remaining + ")";
+      root.clearInterval(state.timer);
+      state.timer = root.setInterval(() => {
+        state.remaining -= 1;
+        if (state.remaining > 0) {
+          button.textContent = MSG_CONFIRM_BUTTON + " (" + state.remaining + ")";
+          return;
+        }
+        root.clearInterval(state.timer);
+        state.timer = 0;
+        button.dataset.confirmClear = "true";
+        button.disabled = false;
+        button.textContent = MSG_CONFIRM_BUTTON;
+      }, 1000);
     }
 
     function clearCreateForm() {
