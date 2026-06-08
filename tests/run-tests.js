@@ -171,6 +171,17 @@ async function testWebAuthnCredentialDescriptorAllowsMobile() {
   assert.equal(descriptor.transports.includes("internal"), true);
 }
 
+async function testPasskeyCreationUsesStableLabel() {
+  const metadata = app.validateDirectHeader(fixedDirectHeader());
+  const options = app.makeWebAuthnPrfCreationOptions(metadata.prfSalt, metadata.rpId);
+  assert.equal(options.publicKey.rp.name, "Encrypted 2D Barcode");
+  assert.equal(options.publicKey.user.name, "Encrypted 2D Barcode");
+  assert.equal(options.publicKey.user.displayName, "Encrypted 2D Barcode");
+  assert.equal(app.utf8Decode(options.publicKey.user.id), "encrypted-2d-barcode-passkey-v1");
+  assert.equal(options.publicKey.authenticatorSelection.residentKey, "required");
+  assert.equal(options.publicKey.hints.includes("hybrid"), true);
+}
+
 async function testDiscoverablePasskeyRequestReadsExistingCredential() {
   const metadata = app.validateDirectHeader(fixedDirectHeader());
   const options = app.makeDiscoverableWebAuthnPrfRequestOptions(metadata.prfSalt, metadata.rpId);
@@ -369,6 +380,7 @@ async function run() {
     testDirectJweShape,
     testDirectHeaderValidation,
     testWebAuthnCredentialDescriptorAllowsMobile,
+    testPasskeyCreationUsesStableLabel,
     testDiscoverablePasskeyRequestReadsExistingCredential,
     testBoundPasskeyRequestUsesStoredCredentialId,
     testDirectJweRoundtrip,

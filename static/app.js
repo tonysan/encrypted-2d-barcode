@@ -32,6 +32,8 @@
   const PASSKEY_CREDENTIAL_STORAGE_KEY = "erk1.passkeyCredential.v1";
   const WEBAUTHN_TRANSPORTS = ["hybrid", "internal", "usb", "nfc", "ble"];
   const WEBAUTHN_HINTS = ["hybrid", "client-device", "security-key"];
+  const PASSKEY_LABEL = "Encrypted 2D Barcode";
+  const PASSKEY_USER_ID = "encrypted-2d-barcode-passkey-v1";
 
   // Web Crypto is the security boundary. Node's webcrypto fallback lets tests
   // exercise the same API shape without adding a crypto dependency.
@@ -712,47 +714,50 @@
     };
   }
 
-  async function createWebAuthnPrfCredential(prfSalt, rpId, options) {
-    const saltBytes = toUint8Array(prfSalt);
-    const normalizedRpId = normalizeRpId(rpId);
-    assertWebAuthnAvailable(normalizedRpId);
-    const label = options && options.label ? String(options.label) : "code";
-    const randomLabel = base64UrlEncode(randomBytes(8));
-    try {
-      const credential = await root.navigator.credentials.create({
-        publicKey: {
-          challenge: randomBytes(32),
-          rp: {
-            id: normalizedRpId,
-            name: "Encrypted 2D Barcode"
-          },
-          user: {
-            id: randomBytes(32),
-            name: "encrypted-2d-barcode-" + randomLabel,
-            displayName: "Encrypted 2D Barcode " + label
-          },
-          pubKeyCredParams: [
-            { type: "public-key", alg: -7 },
-            { type: "public-key", alg: -257 }
-          ],
-          authenticatorSelection: {
-            residentKey: "required",
-            requireResidentKey: true,
-            userVerification: "preferred"
-          },
-          attestation: "none",
-          timeout: WEBAUTHN_TIMEOUT_MS,
-          hints: WEBAUTHN_HINTS.slice(),
-          extensions: {
-            credProps: true,
-            prf: {
-              eval: {
-                first: saltBytes
-              }
+  function makeWebAuthnPrfCreationOptions(prfSalt, rpId) {
+    return {
+      publicKey: {
+        challenge: randomBytes(32),
+        rp: {
+          id: normalizeRpId(rpId),
+          name: PASSKEY_LABEL
+        },
+        user: {
+          id: utf8Encode(PASSKEY_USER_ID),
+          name: PASSKEY_LABEL,
+          displayName: PASSKEY_LABEL
+        },
+        pubKeyCredParams: [
+          { type: "public-key", alg: -7 },
+          { type: "public-key", alg: -257 }
+        ],
+        authenticatorSelection: {
+          residentKey: "required",
+          requireResidentKey: true,
+          userVerification: "preferred"
+        },
+        attestation: "none",
+        timeout: WEBAUTHN_TIMEOUT_MS,
+        hints: WEBAUTHN_HINTS.slice(),
+        extensions: {
+          credProps: true,
+          prf: {
+            eval: {
+              first: toUint8Array(prfSalt)
             }
           }
         }
-      });
+      }
+    };
+  }
+
+  async function createWebAuthnPrfCredential(prfSalt, rpId) {
+    const normalizedRpId = normalizeRpId(rpId);
+    assertWebAuthnAvailable(normalizedRpId);
+    try {
+      const credential = await root.navigator.credentials.create(
+        makeWebAuthnPrfCreationOptions(prfSalt, normalizedRpId)
+      );
       if (!credential || !credential.rawId) {
         throw new Error("Browser did not return a WebAuthn credential.");
       }
@@ -881,7 +886,7 @@
         if (!getPasskeyStorage()) {
           throw new Error("Passkey mode needs browser storage for non-secret passkey metadata.");
         }
-        const credential = await createWebAuthnPrfCredential(prfSalt, rpId, { label: "site passkey" });
+        const credential = await createWebAuthnPrfCredential(prfSalt, rpId);
         credentialIdBase64Url = base64UrlEncode(toUint8Array(credential.rawId));
         const prfEnabled = getPrfEnabledResult(credential);
         if (prfEnabled === false) {
@@ -1232,7 +1237,9 @@
       webauthnSecureStatus: $("webauthn-secure-status"),
       webauthnApiStatus: $("webauthn-api-status"),
       webauthnPrfStatus: $("webauthn-prf-status"),
-      plainWarning: $("plain-warning"),
+      passkeyLabelOutput: $("passkey-label-output"),
+      passkeyOutputDetails: $("passkey-output-details"),
+      createMessage: $("create-message"),
       createButton: $("create-button"),
       clearCreateButton: $("clear-create-button"),
       createError: $("create-error"),
@@ -1273,6 +1280,8 @@
     let hideTimer = 0;
     let countdownTimer = 0;
     let hideAt = 0;
+    const clearCreateConfirm = { timer: 0 };
+    const clearRecoverConfirm = { timer: 0 };
 
     function currentCreateMode() {
       const checked = document.querySelector("input[name='create-mode']:checked");
@@ -1287,6 +1296,23 @@
       element.textContent = error && error.message ? error.message : String(error);
     }
 
+    function setCreateMessage(kind, message) {
+      elements.createMessage.className = "mode-message";
+      if (!message) {
+        elements.createMessage.textContent = "";
+        setHidden(elements.createMessage, true);
+        return;
+      }
+      elements.createMessage.classList.add(kind);
+      elements.createMessage.textContent = message;
+      setHidden(elements.createMessage, false);
+    }
+
+    function showCreateError(error) {
+      clearError(elements.createError);
+      setCreateMessage("error", error && error.message ? error.message : String(error));
+    }
+
     function yesNo(value) {
       return value ? "Yes" : "No";
     }
@@ -1297,6 +1323,7 @@
       elements.webauthnRpStatus.textContent = env.rpId || "Unavailable";
       elements.webauthnSecureStatus.textContent = yesNo(env.secureContext);
       elements.webauthnApiStatus.textContent = yesNo(env.apiAvailable);
+      elements.passkeyLabelOutput.textContent = PASSKEY_LABEL;
       if (prfStatus) {
         elements.webauthnPrfStatus.textContent = prfStatus;
       }
@@ -1336,7 +1363,13 @@
       const mode = currentCreateMode();
       setHidden(elements.createPassphraseFields, mode !== "passphrase");
       setHidden(elements.webauthnCreateFields, mode !== "webauthn");
-      setHidden(elements.plainWarning, mode !== "plain");
+      if (mode === "plain") {
+        setCreateMessage("warning", "Plain mode is not encrypted. Anyone who scans the code can read the string.");
+      } else if (mode === "webauthn") {
+        setCreateMessage("notice", "Passkey mode is advanced. Use the browser prompt to choose this device, a phone, or a security key. Each code gets a new encryption key.");
+      } else {
+        setCreateMessage("", "");
+      }
     }
 
     function setAppView(view) {
@@ -1361,7 +1394,7 @@
       }
     }
 
-    function renderOutput(payload, modeLabel) {
+    function renderOutput(payload, modeLabel, modeKind) {
       latestPayload = payload;
       latestQrContent = buildQrContent(payload);
       if (payload.startsWith(ENCRYPTED_PREFIX) && shouldEncodeQrAsUrl() && latestQrContent === payload) {
@@ -1373,6 +1406,7 @@
       elements.codeModeLabel.textContent = modeLabel;
       elements.codeDate.textContent = new Date().toISOString().slice(0, 10);
       elements.codeChecksum.textContent = "Checksum " + shortChecksum(latestQrContent);
+      setHidden(elements.passkeyOutputDetails, modeKind !== "webauthn");
       drawQrToCanvas(elements.qrCanvas, latestQrContent);
       setHidden(elements.outputArea, false);
     }
@@ -1404,6 +1438,7 @@
 
     async function createPayload() {
       clearError(elements.createError);
+      updateModeUi();
       hideSecret();
       let mode = currentCreateMode();
       try {
@@ -1413,7 +1448,7 @@
         }
         mode = currentCreateMode();
         if (mode === "plain") {
-          renderOutput(encodePlainPayload(text), "Plain unencrypted code");
+          renderOutput(encodePlainPayload(text), "Plain unencrypted code", "plain");
           return;
         }
         if (mode === "webauthn") {
@@ -1422,7 +1457,7 @@
           }
           updateWebAuthnStatus("Checking site passkey");
           const compactJwe = await encryptWebAuthnJwe(text);
-          renderOutput(ENCRYPTED_PREFIX + compactJwe, "Passkey encrypted code");
+          renderOutput(ENCRYPTED_PREFIX + compactJwe, "Passkey encrypted code", "webauthn");
           updateWebAuthnStatus("Succeeded for this code");
           return;
         }
@@ -1432,19 +1467,19 @@
           throw new Error("Passphrase confirmation does not match.");
         }
         const compactJwe = await encryptPassphraseJwe(text, passphrase);
-        renderOutput(ENCRYPTED_PREFIX + compactJwe, "Passphrase encrypted code");
+        renderOutput(ENCRYPTED_PREFIX + compactJwe, "Passphrase encrypted code", "passphrase");
       } catch (error) {
         if (mode === "webauthn") {
           if (error && error.message === "Confirm the passkey recovery dependency first.") {
-            showError(elements.createError, error);
+            showCreateError(error);
             return;
           }
           selectCreateMode("passphrase");
           updateWebAuthnStatus("Failed; passphrase selected");
-          showError(elements.createError, new Error(describePasskeyFailure(error)));
+          showCreateError(new Error(describePasskeyFailure(error)));
           return;
         }
-        showError(elements.createError, error);
+        showCreateError(error);
       }
     }
 
@@ -1472,11 +1507,30 @@
       }
     }
 
-    document.querySelectorAll("input[name='create-mode']").forEach((input) => {
-      input.addEventListener("change", updateModeUi);
-    });
-    elements.createButton.addEventListener("click", createPayload);
-    elements.clearCreateButton.addEventListener("click", () => {
+    function resetClearButton(button, state) {
+      root.clearTimeout(state.timer);
+      state.timer = 0;
+      button.dataset.confirmClear = "";
+      button.textContent = "Clear";
+      button.classList.add("secondary");
+      button.classList.remove("danger");
+    }
+
+    function requestClearConfirmation(button, state, clearAction) {
+      if (button.dataset.confirmClear === "true") {
+        resetClearButton(button, state);
+        clearAction();
+        return;
+      }
+      button.dataset.confirmClear = "true";
+      button.textContent = "Confirm";
+      button.classList.remove("secondary");
+      button.classList.add("danger");
+      root.clearTimeout(state.timer);
+      state.timer = root.setTimeout(() => resetClearButton(button, state), 3000);
+    }
+
+    function clearCreateForm() {
       elements.secretInput.value = "";
       elements.createPassphrase.value = "";
       elements.createPassphraseConfirm.value = "";
@@ -1487,6 +1541,24 @@
       latestQrContent = "";
       setHidden(elements.outputArea, true);
       clearError(elements.createError);
+      updateModeUi();
+    }
+
+    function clearRecoverForm() {
+      elements.recoverPayload.value = "";
+      elements.recoverPassphrase.value = "";
+      clearError(elements.recoverError);
+      setHidden(elements.copyStatus, true);
+      updateRecoverSummary();
+      hideSecret();
+    }
+
+    document.querySelectorAll("input[name='create-mode']").forEach((input) => {
+      input.addEventListener("change", updateModeUi);
+    });
+    elements.createButton.addEventListener("click", createPayload);
+    elements.clearCreateButton.addEventListener("click", () => {
+      requestClearConfirmation(elements.clearCreateButton, clearCreateConfirm, clearCreateForm);
     });
     elements.copyPayloadButton.addEventListener("click", async () => {
       try {
@@ -1512,12 +1584,7 @@
     elements.recoverPayload.addEventListener("input", updateRecoverSummary);
     elements.recoverButton.addEventListener("click", recoverPayload);
     elements.clearRecoverButton.addEventListener("click", () => {
-      elements.recoverPayload.value = "";
-      elements.recoverPassphrase.value = "";
-      clearError(elements.recoverError);
-      setHidden(elements.copyStatus, true);
-      updateRecoverSummary();
-      hideSecret();
+      requestClearConfirmation(elements.clearRecoverButton, clearRecoverConfirm, clearRecoverForm);
     });
     elements.hideSecretButton.addEventListener("click", hideSecret);
     elements.copySecretButton.addEventListener("click", async () => {
@@ -1567,6 +1634,7 @@
     decryptDirectJwe,
     makeWebAuthnProtectedHeader,
     makeWebAuthnCredentialDescriptor,
+    makeWebAuthnPrfCreationOptions,
     makeDiscoverableWebAuthnPrfRequestOptions,
     makeBoundWebAuthnPrfRequestOptions,
     validateDirectHeader,

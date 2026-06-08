@@ -74,6 +74,11 @@ button.danger {
   background: var(--danger);
 }
 
+button.danger:hover {
+  border-color: #8f1d14;
+  background: #8f1d14;
+}
+
 .link-button {
   min-height: auto;
   border: 0;
@@ -226,11 +231,6 @@ body[data-view="recover"] .workspace {
   margin-top: 14px;
 }
 
-.passkey-tech-details {
-  border-top: 1px solid var(--line);
-  padding-top: 12px;
-}
-
 .check-field {
   display: flex;
   align-items: flex-start;
@@ -298,6 +298,7 @@ button:focus-visible {
 .warning,
 .notice,
 .error,
+.mode-message,
 .mode-summary,
 .hint {
   margin-top: 14px;
@@ -306,6 +307,7 @@ button:focus-visible {
 .warning,
 .notice,
 .error,
+.mode-message,
 .mode-summary {
   border-radius: 6px;
   padding: 10px 12px;
@@ -388,6 +390,18 @@ button:focus-visible {
 .tech-details summary {
   cursor: pointer;
   font-weight: 700;
+}
+
+.passkey-output-details {
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+  padding-top: 12px;
+}
+
+.passkey-output-details h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.95rem;
 }
 
 .compact-field {

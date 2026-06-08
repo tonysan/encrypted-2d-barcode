@@ -39,9 +39,7 @@
           </label>
         </fieldset>
 
-        <div id="plain-warning" class="warning hidden" role="status">
-          Plain mode is not encrypted. Anyone who scans the code can read the string.
-        </div>
+        <div id="create-message" class="mode-message hidden" role="status"></div>
 
         <label class="field">
           <span>String</span>
@@ -60,42 +58,14 @@
         </div>
 
         <div id="webauthn-create-fields" class="webauthn-create-fields hidden">
-          <div class="notice" role="status">
-            Passkey mode is advanced. Use the browser prompt to choose this device, a phone, or a security key. Each code gets a new encryption key.
-          </div>
           <label class="check-field">
             <input id="webauthn-ack" type="checkbox">
             <span>I understand I need this passkey setup on this site to recover passkey codes.</span>
           </label>
-          <details class="tech-details passkey-tech-details">
-            <summary>Passkey technical details</summary>
-            <dl class="support-grid">
-              <div>
-                <dt>Origin</dt>
-                <dd id="webauthn-origin-status">-</dd>
-              </div>
-              <div>
-                <dt>RP ID</dt>
-                <dd id="webauthn-rp-status">-</dd>
-              </div>
-              <div>
-                <dt>Secure context</dt>
-                <dd id="webauthn-secure-status">-</dd>
-              </div>
-              <div>
-                <dt>WebAuthn API</dt>
-                <dd id="webauthn-api-status">-</dd>
-              </div>
-              <div>
-                <dt>PRF check</dt>
-                <dd id="webauthn-prf-status">Runs on create</dd>
-              </div>
-            </dl>
-          </details>
         </div>
 
         <div class="actions">
-          <button id="create-button" type="button">Create Code</button>
+          <button id="create-button" type="button">Generate</button>
           <button id="clear-create-button" type="button" class="secondary">Clear</button>
         </div>
 
@@ -132,6 +102,35 @@
                 <button id="copy-url-button" type="button" class="secondary">Copy</button>
               </div>
             </label>
+            <div id="passkey-output-details" class="passkey-output-details hidden">
+              <h3>Passkey</h3>
+              <dl class="support-grid">
+                <div>
+                  <dt>Name</dt>
+                  <dd id="passkey-label-output">-</dd>
+                </div>
+                <div>
+                  <dt>Origin</dt>
+                  <dd id="webauthn-origin-status">-</dd>
+                </div>
+                <div>
+                  <dt>RP ID</dt>
+                  <dd id="webauthn-rp-status">-</dd>
+                </div>
+                <div>
+                  <dt>Secure context</dt>
+                  <dd id="webauthn-secure-status">-</dd>
+                </div>
+                <div>
+                  <dt>WebAuthn API</dt>
+                  <dd id="webauthn-api-status">-</dd>
+                </div>
+                <div>
+                  <dt>PRF check</dt>
+                  <dd id="webauthn-prf-status">Runs on create</dd>
+                </div>
+              </dl>
+            </div>
           </details>
         </div>
       </section>

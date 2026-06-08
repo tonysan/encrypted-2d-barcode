@@ -73,7 +73,7 @@ enc = A256GCM
 
 Advanced encrypted mode for compatible browsers, authenticators, and HTTPS origins.
 
-Passkey-protected encryption first asks the browser to read an existing passkey for this site, including passkeys available from a phone, tablet, or security key. If no usable passkey is available, the app can create one reusable passkey for this site. Each code still gets a fresh encryption key from a new random salt. If the browser or unlock device cannot provide the required key material, the app switches back to passphrase mode.
+Passkey-protected encryption first asks the browser to read an existing passkey for this site, including passkeys available from a phone, tablet, or security key. If no usable passkey is available, the app can create one reusable passkey for this site named `Encrypted 2D Barcode`. Each code still gets a fresh encryption key from a new random salt. If the browser or unlock device cannot provide the required key material, the app switches back to passphrase mode.
 
 Payload format:
 
