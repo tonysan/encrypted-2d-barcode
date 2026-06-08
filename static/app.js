@@ -1042,7 +1042,8 @@
   }
 
   // Recovered secrets are drawn to canvas and auto-hidden. This is UI hygiene,
-  // not a cryptographic guarantee; copying still requires explicit confirmation.
+  // not a cryptographic guarantee; copying still places content on the system
+  // clipboard.
   function renderSecretToCanvas(canvas, text) {
     const width = 900;
     const contextForMeasure = canvas.getContext("2d");
@@ -1064,7 +1065,7 @@
     }
     if (lines.length > maxLines) {
       ctx.fillStyle = "#b42318";
-      ctx.fillText("[Output truncated on canvas. Use Copy Anyway if needed.]", 28, height - 30);
+      ctx.fillText("[Output truncated on canvas. Use Copy if needed.]", 28, height - 30);
     }
   }
 
@@ -1193,7 +1194,7 @@
       hideSecretButton: $("hide-secret-button"),
       copySecretButton: $("copy-secret-button"),
       hideCountdown: $("hide-countdown"),
-      fragmentBanner: $("fragment-banner")
+      copyStatus: $("copy-status")
     };
 
     elements.originLabel.textContent = root.location && root.location.origin !== "null"
@@ -1278,6 +1279,7 @@
 
     function updateRecoverSummary() {
       clearError(elements.recoverError);
+      setHidden(elements.copyStatus, true);
       const value = elements.recoverPayload.value;
       if (!value.trim()) {
         elements.recoverModeSummary.textContent = "Waiting for payload.";
@@ -1321,6 +1323,7 @@
 
     function startProtectedDisplay(text) {
       recoveredSecret = text;
+      setHidden(elements.copyStatus, true);
       renderSecretToCanvas(elements.protectedCanvas, text);
       setHidden(elements.protectedArea, false);
       root.clearTimeout(hideTimer);
@@ -1381,6 +1384,7 @@
 
     async function recoverPayload() {
       clearError(elements.recoverError);
+      setHidden(elements.copyStatus, true);
       hideSecret();
       try {
         const detected = detectPayload(elements.recoverPayload.value);
@@ -1445,6 +1449,7 @@
       elements.recoverPayload.value = "";
       elements.recoverPassphrase.value = "";
       clearError(elements.recoverError);
+      setHidden(elements.copyStatus, true);
       updateRecoverSummary();
       hideSecret();
     });
@@ -1453,11 +1458,11 @@
       if (!recoveredSecret) {
         return;
       }
-      if (!root.confirm("Copying places the recovered string on the system clipboard. Continue?")) {
-        return;
-      }
       try {
         await copyText(recoveredSecret);
+        hideSecret();
+        elements.copyStatus.textContent = "content is copied to clipboard";
+        setHidden(elements.copyStatus, false);
       } catch (error) {
         showError(elements.recoverError, error);
       }
@@ -1474,7 +1479,6 @@
     if (fragmentPayload) {
       elements.recoverPayload.value = fragmentPayload;
       updateRecoverSummary();
-      setHidden(elements.fragmentBanner, false);
     } else {
       updateRecoverSummary();
     }

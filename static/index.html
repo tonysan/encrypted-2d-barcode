@@ -142,13 +142,9 @@
           <span class="origin" id="origin-label"></span>
         </div>
 
-        <div id="fragment-banner" class="notice hidden" role="status">
-          URL fragment payload imported.
-        </div>
-
         <label class="field">
           <span>URL or payload</span>
-          <textarea id="recover-payload" rows="7" spellcheck="false" placeholder="Paste https://.../#ERK1..., ERK1..., or plain text"></textarea>
+          <input id="recover-payload" type="text" spellcheck="false" autocomplete="off" placeholder="Paste https://.../#ERK1..., ERK1..., or plain text">
         </label>
 
         <div id="recover-mode-summary" class="mode-summary">Waiting for payload.</div>
@@ -164,6 +160,7 @@
         </div>
 
         <div id="recover-error" class="error" role="alert"></div>
+        <div id="copy-status" class="notice hidden" role="status">content is copied to clipboard</div>
 
         <div id="protected-area" class="protected-area hidden">
           <div class="protected-toolbar">
@@ -173,7 +170,7 @@
           <canvas id="protected-canvas" width="900" height="360" aria-label="Recovered string is rendered on canvas"></canvas>
           <div class="actions wrap">
             <button id="hide-secret-button" type="button" class="secondary">Hide</button>
-            <button id="copy-secret-button" type="button" class="danger">Copy Anyway</button>
+            <button id="copy-secret-button" type="button" class="secondary">Copy</button>
           </div>
           <p class="hint">Canvas display reduces casual DOM exposure. It does not protect against a compromised browser, OS, extension, screenshot, screen recorder, or keylogger.</p>
         </div>
