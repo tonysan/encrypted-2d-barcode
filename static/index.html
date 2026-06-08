@@ -4,13 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="referrer" content="no-referrer">
-    <title>Encrypted 2D Barcode</title>
+    <title>Encrypt 2D Barcode</title>
     <link rel="stylesheet" href="./style.css?v=0.1.0">
   </head>
   <body data-view="create">
     <header class="app-header">
       <div>
-        <h1>Encrypted 2D Barcode</h1>
+        <h1><a href="./" title="Encrypt 2D Barcode">Encrypt 2D Barcode</a></h1>
         <p>Static local string encryption with printable recovery codes.</p>
       </div>
       <a class="repo-link" href="https://github.com/tonysan/encrypted-2d-barcode" target="_blank" rel="noopener noreferrer">GitHub</a>
@@ -20,7 +20,7 @@
       <section class="panel create-panel" aria-labelledby="create-title">
         <div class="panel-heading">
           <h2 id="create-title">Create</h2>
-          <span class="phase-badge">Phases 1-6</span>
+          <span class="phase-badge">Phases 6</span>
         </div>
 
         <fieldset class="mode-picker">
@@ -42,14 +42,14 @@
         <div id="create-message" class="mode-message hidden" role="status"></div>
 
         <label class="field">
-          <span>String</span>
-          <textarea id="secret-input" rows="8" autocomplete="off" spellcheck="false" placeholder="Enter the string to encode"></textarea>
+          <span>Content</span>
+          <textarea id="secret-input" rows="8" autocomplete="off" spellcheck="false" placeholder="Enter the content to encode (url, text...)"></textarea>
         </label>
 
         <div id="passphrase-create-fields" class="field-grid">
           <label class="field">
             <span>Passphrase</span>
-            <input id="create-passphrase" type="password" autocomplete="new-password" placeholder="Recommended: 16+ characters">
+            <input id="create-passphrase" type="password" autocomplete="new-password" placeholder="Recommend 16 characters or more">
           </label>
           <label class="field">
             <span>Confirm</span>
@@ -137,12 +137,12 @@
 
       <section class="panel recover-panel" aria-labelledby="recover-title">
         <div class="panel-heading">
-          <h2 id="recover-title">Recover</h2>
+          <h2 id="recover-title">Decrypt</h2>
           <span class="origin" id="origin-label"></span>
         </div>
 
         <label class="field">
-          <span>URL or payload</span>
+          <span>Encrypted content</span>
           <input id="recover-payload" type="text" spellcheck="false" autocomplete="off" placeholder="Paste https://.../#ERK1..., ERK1..., or plain text">
         </label>
 
@@ -154,7 +154,7 @@
         </label>
 
         <div class="actions">
-          <button id="recover-button" type="button">Recover String</button>
+          <button id="recover-button" type="button">Decrypt</button>
           <button id="clear-recover-button" type="button" class="secondary">Clear</button>
         </div>
 
