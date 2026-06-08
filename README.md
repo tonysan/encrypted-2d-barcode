@@ -73,7 +73,7 @@ enc = A256GCM
 
 Advanced encrypted mode for compatible browsers, authenticators, and HTTPS origins.
 
-The first passkey-protected code creates one reusable passkey for this site. Later passkey-protected codes reuse that passkey, while still getting a fresh encryption key from a new random salt. If the browser or unlock device cannot provide the required key material, the app switches back to passphrase mode.
+The first passkey-protected code creates one reusable passkey for this site. Later passkey-protected codes reuse that passkey, while still getting a fresh encryption key from a new random salt. The WebAuthn request advertises same-device, phone/tablet, and security-key paths so compatible browsers can offer a mobile-device passkey. If the browser or unlock device cannot provide the required key material, the app switches back to passphrase mode.
 
 Payload format:
 

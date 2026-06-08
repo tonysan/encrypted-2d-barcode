@@ -162,6 +162,15 @@ async function testDirectHeaderValidation() {
   );
 }
 
+async function testWebAuthnCredentialDescriptorAllowsMobile() {
+  const header = fixedDirectHeader();
+  const descriptor = app.makeWebAuthnCredentialDescriptor(header.cid);
+  assert.equal(descriptor.type, "public-key");
+  assert.equal(descriptor.id.length, 8);
+  assert.equal(descriptor.transports.includes("hybrid"), true);
+  assert.equal(descriptor.transports.includes("internal"), true);
+}
+
 async function testDirectJweRoundtrip() {
   const compact = await app.encryptDirectJwe("direct secret", zeroKey(), fixedDirectHeader(), { iv: fixedIv() });
   assert.equal(await app.decryptDirectJwe(compact, zeroKey()), "direct secret");
@@ -337,6 +346,7 @@ async function run() {
     testPassphraseJweRoundtrip,
     testDirectJweShape,
     testDirectHeaderValidation,
+    testWebAuthnCredentialDescriptorAllowsMobile,
     testDirectJweRoundtrip,
     testWrongDirectKey,
     testCorruptedDirectCiphertext,

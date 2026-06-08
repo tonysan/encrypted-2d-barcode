@@ -30,6 +30,8 @@
   const WEBAUTHN_HKDF_SALT_LABEL = "encrypted-2d-barcode WebAuthn PRF HKDF salt v1";
   const WEBAUTHN_HKDF_INFO_LABEL = "ERK1 WebAuthn PRF A256GCM direct key v1";
   const PASSKEY_CREDENTIAL_STORAGE_KEY = "erk1.passkeyCredential.v1";
+  const WEBAUTHN_TRANSPORTS = ["hybrid", "internal", "usb", "nfc", "ble"];
+  const WEBAUTHN_HINTS = ["hybrid", "client-device", "security-key"];
 
   // Web Crypto is the security boundary. Node's webcrypto fallback lets tests
   // exercise the same API shape without adding a crypto dependency.
@@ -659,6 +661,14 @@
       : null;
   }
 
+  function makeWebAuthnCredentialDescriptor(credentialIdBase64Url) {
+    return {
+      type: "public-key",
+      id: base64UrlDecode(credentialIdBase64Url),
+      transports: WEBAUTHN_TRANSPORTS.slice()
+    };
+  }
+
   async function createWebAuthnPrfCredential(prfSalt, rpId, options) {
     const saltBytes = toUint8Array(prfSalt);
     const normalizedRpId = normalizeRpId(rpId);
@@ -689,6 +699,7 @@
           },
           attestation: "none",
           timeout: WEBAUTHN_TIMEOUT_MS,
+          hints: WEBAUTHN_HINTS.slice(),
           extensions: {
             credProps: true,
             prf: {
@@ -711,7 +722,6 @@
   async function requestWebAuthnPrfOutput(credentialIdBase64Url, prfSalt, rpId) {
     const normalizedRpId = normalizeRpId(rpId);
     assertWebAuthnAvailable(normalizedRpId);
-    const credentialId = base64UrlDecode(credentialIdBase64Url);
     const saltBytes = toUint8Array(prfSalt);
     try {
       const assertion = await root.navigator.credentials.get({
@@ -719,13 +729,11 @@
           challenge: randomBytes(32),
           rpId: normalizedRpId,
           allowCredentials: [
-            {
-              type: "public-key",
-              id: credentialId
-            }
+            makeWebAuthnCredentialDescriptor(credentialIdBase64Url)
           ],
           userVerification: "preferred",
           timeout: WEBAUTHN_TIMEOUT_MS,
+          hints: WEBAUTHN_HINTS.slice(),
           extensions: {
             prf: {
               evalByCredential: {
@@ -1500,6 +1508,7 @@
     encryptDirectJwe,
     decryptDirectJwe,
     makeWebAuthnProtectedHeader,
+    makeWebAuthnCredentialDescriptor,
     validateDirectHeader,
     deriveWebAuthnDirectKeyBytes,
     getCurrentRpId,
