@@ -11,7 +11,6 @@
     ENCRYPTED_PREFIX,
     PLAIN_PREFIX,
     PASSWORD_ALG,
-    DIRECT_ALG,
     CONTENT_ALG,
     DEFAULT_P2C,
     MAX_P2C,
@@ -82,8 +81,6 @@
     MSG_MALFORMED_CREDENTIAL_ID,
     MSG_MALFORMED_PRF_SALT,
     MSG_EXPECTED_JWE,
-    MSG_DIRECT_NO_ENCRYPTED_KEY,
-    MSG_WRONG_DIRECT_KEY,
     MSG_INVALID_RP_ID,
     MSG_NO_CRYPTO,
     MSG_EXPECTED_BINARY,
@@ -102,7 +99,7 @@
     MSG_WEBAUTHN_WRONG_CREDENTIAL,
     MSG_WEBAUTHN_DIFFERENT_RP,
     MSG_WEBAUTHN_DIFFERENT_RP_PAGE,
-    MSG_INVALID_DIRECT_KEY_SIZE,
+    MSG_INVALID_WEBAUTHN_KEK_SIZE,
     MSG_INVALID_IV_SIZE,
     MSG_INVALID_PRF_OUTPUT_SIZE,
     MSG_INVALID_PRF_SALT_SIZE,
@@ -124,11 +121,11 @@
     concatBytes,
     getCrypto,
     makeWebAuthnProtectedHeader,
-    validateDirectHeader,
+    validateWebAuthnHeader,
     getCurrentRpId,
     normalizeRpId,
-    encryptDirectJwe,
-    decryptDirectJwe,
+    encryptWebAuthnWrappedJwe,
+    decryptWebAuthnWrappedJwe,
     splitCompactJwe,
     parseProtectedHeader
   } = app;
@@ -282,7 +279,7 @@
       publicKey: {
         challenge: randomBytes(32),
         rpId: normalizeRpId(rpId),
-        userVerification: "preferred",
+        userVerification: "required",
         timeout: WEBAUTHN_TIMEOUT_MS,
         hints: WEBAUTHN_HINTS.slice(),
         extensions: {
@@ -304,7 +301,7 @@
         allowCredentials: [
           makeWebAuthnCredentialDescriptor(credentialIdBase64Url)
         ],
-        userVerification: "preferred",
+        userVerification: "required",
         timeout: WEBAUTHN_TIMEOUT_MS,
         hints: WEBAUTHN_HINTS.slice(),
         extensions: {
@@ -340,7 +337,7 @@
         authenticatorSelection: {
           residentKey: "required",
           requireResidentKey: true,
-          userVerification: "preferred"
+          userVerification: "required"
         },
         attestation: "none",
         timeout: WEBAUTHN_TIMEOUT_MS,
@@ -434,8 +431,8 @@
   // IKM  = WebAuthn prf.results.first
   // salt = UTF8(WEBAUTHN_HKDF_SALT_LABEL) || 0x00 || protected-header ps
   // info = UTF8(WEBAUTHN_HKDF_INFO_LABEL) || 0x00 || UTF8(rp) || 0x00 || cid
-  // L    = 32 bytes for A256GCM
-  async function deriveWebAuthnDirectKeyBytes(prfOutput, metadata) {
+  // L    = 32 bytes for A256KW
+  async function deriveWebAuthnKekBytes(prfOutput, metadata) {
     const crypto = getCrypto();
     const prfBytes = toUint8Array(prfOutput);
     if (prfBytes.length !== AES_256_KEY_BYTES) {
@@ -456,7 +453,7 @@
     const bits = await crypto.subtle.deriveBits(
       {
         name: "HKDF",
-        hash: "SHA-256",
+        hash: "SHA-512",
         salt: concatBytes(utf8Encode(WEBAUTHN_HKDF_SALT_LABEL), new Uint8Array([0]), prfSalt),
         info: concatBytes(
           utf8Encode(WEBAUTHN_HKDF_INFO_LABEL),
@@ -506,15 +503,15 @@
       }
     }
     const header = makeWebAuthnProtectedHeader(credentialIdBase64Url, rpId, prfSalt);
-    const metadata = validateDirectHeader(header);
-    const directKey = await deriveWebAuthnDirectKeyBytes(prfOutput, metadata);
-    return encryptDirectJwe(plaintext, directKey, header, options);
+    const metadata = validateWebAuthnHeader(header);
+    const kek = await deriveWebAuthnKekBytes(prfOutput, metadata);
+    return encryptWebAuthnWrappedJwe(plaintext, kek, header);
   }
 
   async function decryptWebAuthnJwe(compactJwe, options) {
     const parts = splitCompactJwe(compactJwe);
     const header = parseProtectedHeader(parts.protectedSegment);
-    const metadata = validateDirectHeader(header);
+    const metadata = validateWebAuthnHeader(header);
     const currentRpId = options && options.rpId ? normalizeRpId(options.rpId) : getCurrentRpId();
     if (currentRpId && currentRpId !== metadata.rpId) {
       throw new Error(MSG_WEBAUTHN_DIFFERENT_RP + metadata.rpId + MSG_WEBAUTHN_DIFFERENT_RP_PAGE + currentRpId + ".");
@@ -524,9 +521,9 @@
       metadata.prfSalt,
       metadata.rpId
     );
-    const directKey = await deriveWebAuthnDirectKeyBytes(prfOutput, metadata);
+    const kek = await deriveWebAuthnKekBytes(prfOutput, metadata);
     try {
-      return await decryptDirectJwe(compactJwe, directKey);
+      return await decryptWebAuthnWrappedJwe(compactJwe, kek);
     } catch (error) {
       throw new Error(MSG_WEBAUTHN_WRONG_CREDENTIAL);
     }
@@ -537,7 +534,7 @@
     makeWebAuthnPrfCreationOptions,
     makeDiscoverableWebAuthnPrfRequestOptions,
     makeBoundWebAuthnPrfRequestOptions,
-    deriveWebAuthnDirectKeyBytes,
+    deriveWebAuthnKekBytes,
     getWebAuthnEnvironment,
     encryptWebAuthnJwe,
     decryptWebAuthnJwe

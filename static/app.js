@@ -10,7 +10,7 @@
     ENCRYPTED_PREFIX,
     PLAIN_PREFIX,
     PASSWORD_ALG,
-    DIRECT_ALG,
+    WEBAUTHN_ALG,
     CONTENT_ALG,
     DEFAULT_P2C,
     MAX_P2C,
@@ -81,8 +81,6 @@
     MSG_MALFORMED_CREDENTIAL_ID,
     MSG_MALFORMED_PRF_SALT,
     MSG_EXPECTED_JWE,
-    MSG_DIRECT_NO_ENCRYPTED_KEY,
-    MSG_WRONG_DIRECT_KEY,
     MSG_INVALID_RP_ID,
     MSG_NO_CRYPTO,
     MSG_EXPECTED_BINARY,
@@ -101,7 +99,7 @@
     MSG_WEBAUTHN_WRONG_CREDENTIAL,
     MSG_WEBAUTHN_DIFFERENT_RP,
     MSG_WEBAUTHN_DIFFERENT_RP_PAGE,
-    MSG_INVALID_DIRECT_KEY_SIZE,
+    MSG_INVALID_WEBAUTHN_KEK_SIZE,
     MSG_INVALID_IV_SIZE,
     MSG_INVALID_PRF_OUTPUT_SIZE,
     MSG_INVALID_PRF_SALT_SIZE,
@@ -323,7 +321,7 @@
       ? prfSalt
       : base64UrlEncode(toUint8Array(prfSalt));
     return {
-      alg: DIRECT_ALG,
+      alg: WEBAUTHN_ALG,
       enc: CONTENT_ALG,
       app: WEBAUTHN_PROFILE,
       cid: credentialIdValue,
@@ -376,16 +374,16 @@
     base64UrlDecode(header.p2s);
   }
 
-  // WebAuthn PRF uses alg=dir because the CEK is derived locally from PRF
+  // WebAuthn PRF uses a symmetric AES-KW recipient key derived locally from PRF
   // output. The protected header stores only non-secret recovery metadata.
-  function validateDirectHeader(header) {
+  function validateWebAuthnHeader(header) {
     const allowed = new Set(["alg", "enc", "app", "cid", "rp", "ps"]);
     for (const key of Object.keys(header)) {
       if (!allowed.has(key)) {
         throw new Error(MSG_UNSUPPORTED_HEADER);
       }
     }
-    if (header.alg !== DIRECT_ALG) {
+    if (header.alg !== WEBAUTHN_ALG) {
       throw new Error(MSG_UNSUPPORTED_ALG);
     }
     if (header.enc !== CONTENT_ALG) {
@@ -528,32 +526,38 @@
     return Boolean(value && typeof value === "object" && value.type && value.algorithm && value.usages);
   }
 
-  async function importAesGcmKey(keyMaterial, usages) {
+  async function importAesKwKey(keyMaterial, usages) {
     if (looksLikeCryptoKey(keyMaterial)) {
       return keyMaterial;
     }
     const keyBytes = toUint8Array(keyMaterial);
     if (keyBytes.length !== AES_256_KEY_BYTES) {
-      throw new Error(MSG_INVALID_DIRECT_KEY_SIZE);
+      throw new Error(MSG_INVALID_WEBAUTHN_KEK_SIZE);
     }
     return getCrypto().subtle.importKey(
       "raw",
       keyBytes,
-      { name: "AES-GCM", length: 256 },
+      { name: "AES-KW", length: 256 },
       false,
       usages
     );
   }
 
-  async function encryptDirectJwe(plaintext, keyMaterial, header, options) {
+  async function encryptWebAuthnWrappedJwe(plaintext, kekMaterial, header) {
     const crypto = getCrypto();
-    validateDirectHeader(header);
-    const iv = options && options.iv ? toUint8Array(options.iv) : randomBytes(AES_GCM_IV_BYTES);
-    if (iv.length !== AES_GCM_IV_BYTES) {
-      throw new Error(MSG_INVALID_IV_SIZE);
-    }
-    const key = await importAesGcmKey(keyMaterial, ["encrypt"]);
+    validateWebAuthnHeader(header);
+    const iv = randomBytes(AES_GCM_IV_BYTES);
+    const cekBytes = randomBytes(AES_256_KEY_BYTES);
+    const cekForEncrypt = await crypto.subtle.importKey(
+      "raw",
+      cekBytes,
+      { name: "AES-GCM", length: 256 },
+      true,
+      ["encrypt"]
+    );
+    const kek = await importAesKwKey(kekMaterial, ["wrapKey"]);
     const protectedSegment = base64UrlEncode(utf8Encode(stringifyHeader(header)));
+    const encryptedKey = new Uint8Array(await crypto.subtle.wrapKey("raw", cekForEncrypt, kek, "AES-KW"));
     const encrypted = new Uint8Array(await crypto.subtle.encrypt(
       {
         name: "AES-GCM",
@@ -561,32 +565,44 @@
         additionalData: utf8Encode(protectedSegment),
         tagLength: 128
       },
-      key,
+      cekForEncrypt,
       utf8Encode(plaintext)
     ));
     const ciphertext = encrypted.slice(0, encrypted.length - GCM_TAG_BYTES);
     const tag = encrypted.slice(encrypted.length - GCM_TAG_BYTES);
     return [
       protectedSegment,
-      "",
+      base64UrlEncode(encryptedKey),
       base64UrlEncode(iv),
       base64UrlEncode(ciphertext),
       base64UrlEncode(tag)
     ].join(".");
   }
 
-  async function decryptDirectJwe(compactJwe, keyMaterial) {
+  async function decryptWebAuthnWrappedJwe(compactJwe, kekMaterial) {
     const crypto = getCrypto();
     const parts = splitCompactJwe(compactJwe);
-    if (parts.encryptedKeySegment !== "") {
-      throw new Error(MSG_DIRECT_NO_ENCRYPTED_KEY);
-    }
     const header = parseProtectedHeader(parts.protectedSegment);
-    validateDirectHeader(header);
+    validateWebAuthnHeader(header);
+    const encryptedKey = base64UrlDecode(parts.encryptedKeySegment);
     const iv = base64UrlDecode(parts.ivSegment);
     const ciphertext = base64UrlDecode(parts.ciphertextSegment, { allowEmpty: true });
     const tag = base64UrlDecode(parts.tagSegment);
-    const key = await importAesGcmKey(keyMaterial, ["decrypt"]);
+    const kek = await importAesKwKey(kekMaterial, ["unwrapKey"]);
+    let cek;
+    try {
+      cek = await crypto.subtle.unwrapKey(
+        "raw",
+        encryptedKey,
+        kek,
+        "AES-KW",
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["decrypt"]
+      );
+    } catch (error) {
+      throw new Error(MSG_WEBAUTHN_WRONG_CREDENTIAL);
+    }
     try {
       const plaintext = await crypto.subtle.decrypt(
         {
@@ -595,12 +611,12 @@
           additionalData: utf8Encode(parts.protectedSegment),
           tagLength: 128
         },
-        key,
+        cek,
         concatBytes(ciphertext, tag)
       );
       return utf8Decode(new Uint8Array(plaintext));
     } catch (error) {
-      throw new Error(MSG_WRONG_DIRECT_KEY);
+      throw new Error(MSG_WEBAUTHN_WRONG_CREDENTIAL);
     }
   }
 
@@ -674,8 +690,8 @@
           label: MSG_PASSPHRASE_ENCRYPTED
         };
       }
-      if (header.alg === DIRECT_ALG) {
-        validateDirectHeader(header);
+      if (header.alg === WEBAUTHN_ALG) {
+        validateWebAuthnHeader(header);
         return {
           kind: "webauthn",
           payload,
@@ -812,10 +828,10 @@
     decodePlainPayload,
     encryptPassphraseJwe,
     decryptPassphraseJwe,
-    encryptDirectJwe,
-    decryptDirectJwe,
+    encryptWebAuthnWrappedJwe,
+    decryptWebAuthnWrappedJwe,
     makeWebAuthnProtectedHeader,
-    validateDirectHeader,
+    validateWebAuthnHeader,
     getCurrentRpId,
     normalizeRpId,
     extractPayloadFromInput,

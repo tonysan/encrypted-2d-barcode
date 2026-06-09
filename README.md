@@ -1,122 +1,156 @@
 # Encrypted 2D Barcode
 
-A static web app for encrypting an arbitrary string locally and turning it into a printable or scannable 2D barcode.
+## TLDR
 
-The app is intended to replace a clumsy command-line recovery flow:
+Encrypted 2D Barcode is a static browser app for turning compact strings into printable or scannable QR-compatible codes.
+
+It has three modes:
+
+- Plain: creates an ordinary QR code with no redirect, tracking, or encryption.
+- Passphrase: encrypts locally in the browser and requires the passphrase to recover.
+- Passkey: uses browser WebAuthn PRF support so recovery is bound to a compatible passkey credential on the original RP ID.
+
+The app has no backend, accounts, telemetry, analytics, server-side recovery, runtime CDN scripts, remote fonts, service worker, or database. Encryption and recovery happen locally in the browser. Payloads, passphrases, WebAuthn PRF output, derived keys, and decrypted plaintext should not be sent to a server.
+
+This project is not trying to become the canonical hosted QR service. A hosted or demo instance, if any, is only a convenience and test surface. Serious users should self-host a reviewed release on infrastructure they control, especially for passkey mode because WebAuthn recovery is RP-ID/origin bound.
+
+Current status: this repository is pre-release and has not had an external security review. Do not rely on it for important secrets until a reviewed release exists.
+
+## Quick How To Use
+
+Open the static app from `static/index.html`, a local dev server, or a self-hosted HTTPS deployment.
+
+To create a plain code:
+
+1. Select `Plain text`.
+2. Enter the exact text or URL.
+3. Generate, download, or print the code.
+
+Plain mode is not encrypted. Anyone who scans the code can read it.
+
+To create a passphrase-protected code:
+
+1. Select `Passphrase`.
+2. Enter the content.
+3. Enter and confirm a passphrase.
+4. Generate, download, or print the code.
+5. Store or send the passphrase separately from the code.
+
+Anyone with the encrypted QR can attempt offline guesses. Use a high-entropy passphrase.
+
+To create a passkey-protected code:
+
+1. Open the app from the final stable HTTPS domain you expect to use for recovery.
+2. Select `Passkey`.
+3. Confirm the passkey warning.
+4. Let the browser use or create the site passkey.
+5. Generate, download, or print the code.
+6. Test recovery before relying on the printed code.
+
+Passkey mode requires compatible browser WebAuthn PRF support, a compatible authenticator, the same RP ID/origin later, and the same recoverable credential later. The browser may require biometric or PIN verification. Losing the credential, domain, browser support, or authenticator support can make recovery impossible.
+
+To recover:
+
+1. Open a scanned recovery URL or paste the code/link into the decrypt panel.
+2. Enter the passphrase, or complete the passkey prompt.
+3. The app decrypts locally and shows the result in protected display mode.
+
+Protected display uses a canvas and auto-hide behavior to reduce casual DOM exposure. It does not protect against a compromised browser, operating system, extension, screenshot tool, screen recorder, clipboard monitor, or keylogger.
+
+For local development:
 
 ```text
-Before:
-string -> command-line encryption -> encrypted string -> 2D barcode
-scan barcode -> copy encrypted string -> command-line decryption -> string
-
-After:
-open webapp -> enter string -> choose unlock mode -> get 2D barcode
-scan encrypted QR -> open webapp -> unlock locally -> get string
+npm run dev
 ```
 
-## Project Status
+The dev server serves `static/` at `http://127.0.0.1:8788/` by default.
 
-This repository now has a no-build static app with the Phase 1-6 core started:
+## How To Self Host
 
-- Plain payload creation and recovery.
-- Passphrase encrypted payload creation and recovery.
-- Strict-profile JWE Compact implementation on browser Web Crypto.
-- Local QR-compatible 2D barcode generation.
-- Manual paste recovery.
-- URL-fragment import/export.
-- Advanced passkey encrypted payload creation and recovery.
+Host only the deployable static app files from `static/`:
 
-Passkey mode still needs manual validation on the hosted HTTPS deployment before it should be trusted for real recovery workflows.
+```text
+static/index.html
+static/init.js
+static/app.js
+static/passkey.js
+static/ui.js
+static/style.css
+static/_headers
+static/vendor/qrcode-generator.js
+static/LICENSE
+```
 
-The deployable browser app lives in [static/](static/). Repository root contains docs, tests, and project metadata.
+Do not serve repository-root docs, tests, planning files, or development-only files as part of the app.
 
-See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the phased build plan.
+For Cloudflare Pages Git integration:
 
-## Goals
+```text
+Framework preset: None / Static HTML
+Production branch: main
+Build command: npm run build
+Build output directory: static
+Root directory: blank or /
+```
 
-- Static HTML, CSS, and JavaScript or TypeScript only.
-- No backend, database, accounts, telemetry, analytics, CDN runtime scripts, or server-side recovery.
-- Encrypt and decrypt locally in the browser.
-- Generate a QR-compatible 2D barcode from the output payload.
-- Recover encrypted codes by opening the generated QR URL, or by pasting a payload in the same static app.
-- Support passphrase recovery from a local or offline copy where browser APIs allow.
-- Support passkey recovery as an advanced browser-native mode on compatible HTTPS origins.
+The build command runs local tests, verifies required static deployment files, and copies the pinned QR runtime into `static/vendor/` for same-origin deployment.
 
-## Planned Modes
+Encrypted QR codes are domain-aware. When the app runs on an HTTP(S) page, encrypted QR codes contain the current page URL with the recovery payload in the fragment:
 
-### Plain Mode
+```text
+https://your-domain.example/#ERK1.<compact-jwe>
+```
 
-No encryption. The barcode contains exactly the string.
-
-This mode is unsafe for secrets and must be clearly labeled in the UI.
-
-### Passphrase Mode
-
-The default encrypted mode.
-
-Planned payload format:
+The fragment is not sent to the server during normal HTTP requests. Plain mode QR codes contain only the plain payload. When opened from a local file or non-web origin, encrypted QR codes contain only the payload:
 
 ```text
 ERK1.<compact-jwe>
 ```
 
-The encrypted body is planned to use JSON Web Encryption Compact Serialization with a strict allowlisted profile:
+For long-lived passkey payloads:
+
+- Use a stable HTTPS domain you control.
+- Do not rely on a temporary demo domain.
+- Do not rely on a domain you may lose.
+- Create and recover a test payload before creating real payloads.
+- Test recovery before relying on a printed barcode.
+- Create production passkey codes from the final custom domain, not a temporary preview URL.
+
+If the original origin, RP ID, credential, browser support, or authenticator support is unavailable later, passkey recovery may fail.
+
+Hosted deployments should use restrictive headers where practical. The current Cloudflare Pages headers live in `static/_headers`.
+
+Starting point:
 
 ```text
-alg = PBES2-HS512+A256KW
-enc = A256GCM
+Cache-Control: no-store
+Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; font-src 'self'; worker-src 'none'
+Referrer-Policy: no-referrer
+X-Content-Type-Options: nosniff
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=()
 ```
 
-`ERK1` is only an app marker. It is not a custom encryption envelope.
+A release should make it possible to verify which files are included, which dependency versions are included, which checksums match the release, and that no runtime network calls are needed after static assets load.
 
-### Passkey Mode
+Recommended serious-use workflow:
 
-Advanced encrypted mode for compatible browsers, authenticators, and HTTPS origins.
+1. Download the reviewed release ZIP.
+2. Verify the release checksum.
+3. Host the static files on a domain you control.
+4. Serve over HTTPS.
+5. Use restrictive security headers.
+6. Create a test code.
+7. Reload the app.
+8. Scan or paste the test code.
+9. Confirm recovery works before relying on real secrets.
 
-Passkey-protected encryption first asks the browser to read an existing passkey for this site, including passkeys available from a phone, tablet, or security key. If no usable passkey is available, the app can create one reusable passkey for this site named `Encrypted 2D Barcode`. Each code still gets a fresh encryption key from a new random salt. If the browser or unlock device cannot provide the required key material, the app switches back to passphrase mode.
+## Full Tech Details
 
-Payload format:
+### Runtime And Data Handling
 
-```text
-ERK1.<compact-jwe>
-```
+The deployable app is static HTML, CSS, and JavaScript. Runtime code should make no network calls during create or recover flows after static assets are loaded.
 
-The encrypted body uses JWE Compact Serialization with:
-
-```text
-alg = dir
-enc = A256GCM
-```
-
-The protected header stores only non-secret recovery metadata:
-
-```text
-app = erk-webauthn-prf-v1
-cid = base64url credential ID
-rp  = WebAuthn RP ID
-ps  = base64url random 32-byte PRF salt
-```
-
-The direct AES-GCM key is derived locally from `prf.results.first` using this HKDF-SHA-256 profile:
-
-```text
-IKM  = WebAuthn prf.results.first
-salt = UTF8("encrypted-2d-barcode WebAuthn PRF HKDF salt v1") || 0x00 || ps
-info = UTF8("ERK1 WebAuthn PRF A256GCM direct key v1") || 0x00 || UTF8(rp) || 0x00 || cid
-L    = 32 bytes
-```
-
-This mode is origin/RP ID bound and may become unrecoverable if the original origin, browser support, or credential is unavailable. The app reuses one discoverable WebAuthn credential for the site and stores only its non-secret credential ID locally so later codes can use the same passkey. It stores no plaintext, PRF output, derived key, passphrase, or credential secret in browser storage.
-
-## Data Format Direction
-
-This project should not invent a new encryption format.
-
-The v1 implementation uses a tiny strict-profile JWE Compact encoder/decoder with browser Web Crypto primitives rather than importing a broad JOSE/JWT/JWE dependency. The app rejects unsupported algorithms, unsupported headers, remote key references, compression, and behavior outside the reviewed profile.
-
-## Security Boundaries
-
-The app is designed so that:
+Security boundaries:
 
 - Secrets are entered locally.
 - Passphrases are used locally.
@@ -127,82 +161,119 @@ The app is designed so that:
 - Decrypted strings are not sent to a server.
 - Secrets are not stored in localStorage or sessionStorage.
 
-The app does not protect against a compromised browser, compromised operating system, malicious extension, screen capture, keylogger, weak passphrase, lost WebAuthn credential, lost WebAuthn origin, or destroyed printed code.
+Only non-secret passkey credential metadata may be stored locally so the app can request the same credential later.
 
-See [SECURITY.md](SECURITY.md) and [THREAT_MODEL.md](THREAT_MODEL.md).
+### Payload Markers
 
-## Static Hosting
-
-The app should be deployed from [static/](static/) only. Passphrase mode should work from a local or offline copy where supported by the browser. WebAuthn modes require a compatible secure origin and should be self-hosted on a stable HTTPS domain before relying on them for long-lived recovery.
-
-For Cloudflare Pages Git integration:
-
-```text
-Framework preset: None / Static HTML
-Production branch: main
-Build command: npm run build
-Build output directory: static
-```
-
-The build script validates tests and required static deployment files, then copies the pinned `qrcode-generator` browser file into `static/vendor/` for same-origin deployment.
-
-For local development:
-
-```text
-npm run dev
-```
-
-The dev server serves the app at `http://127.0.0.1:8788/` by default.
-
-When the app is opened from an HTTP(S) domain, encrypted QR codes contain the current page URL plus the payload in the fragment:
-
-```text
-https://your-domain.example/#ERK1.<compact-jwe>
-```
-
-Plain mode QR codes always contain only the plain payload:
-
-```text
-the exact string entered by the user
-```
-
-When opened from a local file or non-web origin, encrypted QR codes contain the payload only:
+Encrypted payloads use:
 
 ```text
 ERK1.<compact-jwe>
 ```
 
-For passkey mode, create codes from the final stable custom HTTPS domain. Passkey recovery is origin/RP ID bound.
+`ERK1` is only an app marker. It is not a MAC, signature, checksum, or custom encryption layer.
 
-The page is mode-aware:
+Plain mode currently emits the exact plain string. Legacy `ERP1.<encoded-plain-string>` payloads may remain recoverable for compatibility, but new plain QR codes should not use that wrapper.
 
-- No URL fragment: show the create/encrypt screen only.
-- URL fragment present: show the recover/decrypt screen only.
+### Passphrase Profile
 
-See [SELF_HOSTING.md](SELF_HOSTING.md).
+Passphrase mode uses JSON Web Encryption Compact Serialization with:
 
-## Supply Chain Position
+```text
+alg = PBES2-HS512+A256KW
+enc = A256GCM
+```
 
-Because this app handles high-value secrets, dependencies are part of the security model.
+The passphrase-derived key wraps a random content-encryption key. The content is encrypted with `A256GCM`. Wrong passphrases and corrupted payloads must fail authenticated decryption without displaying garbage plaintext.
 
-Planned rules:
+### Passkey Profile
+
+Passkey mode is advanced and pre-release. The current profile is browser-native, JWE-registered, and symmetric-only:
+
+```text
+alg = A256KW
+enc = A256GCM
+```
+
+The passkey recipient model is:
+
+```text
+KEK = HKDF-SHA-512(WebAuthn PRF output, profile metadata)
+```
+
+The payload contains a random 256-bit content-encryption key wrapped with `A256KW`. Content encryption uses `A256GCM`.
+
+The protected header stores only non-secret recovery metadata:
+
+```text
+app = erk-webauthn-prf-v1
+cid = base64url credential ID
+rp  = WebAuthn RP ID
+ps  = base64url random 32-byte PRF salt
+```
+
+The HKDF profile is:
+
+```text
+IKM  = WebAuthn prf.results.first
+salt = UTF8("encrypted-2d-barcode WebAuthn PRF HKDF salt v1") || 0x00 || ps
+info = UTF8("ERK1 WebAuthn PRF A256KW KEK v1") || 0x00 || UTF8(rp) || 0x00 || cid
+L    = 32 bytes
+```
+
+Older pre-release `alg=dir` passkey payloads are intentionally rejected. Do not rely on pre-release passkey payloads for long-lived recovery.
+
+### Strict JWE Profile
+
+This app intentionally implements only the small JWE subset it needs with browser Web Crypto. It should not become a broad JOSE/JWT/JWE library.
+
+The implementation must reject unsupported algorithms, unsupported encryption methods, unsupported protected headers, remote key references such as `jku` or `x5u`, compression, and unreviewed JWE behavior.
+
+### Threat Model
+
+The app is intended to protect against:
+
+- Backend/operator exposure, because there is no backend secret handling.
+- Server-side database compromise, because there is no database.
+- Accidental query-string logging, because payload URLs use fragments.
+- Passive network observers after static assets are loaded.
+- Someone finding an encrypted printed code without the passphrase or WebAuthn credential.
+- Command-line copy/paste mistakes from older manual workflows.
+
+The app does not protect against:
+
+- Compromised browsers.
+- Compromised operating systems.
+- Malicious browser extensions.
+- Keyloggers.
+- Screen capture or screen recording.
+- Clipboard monitoring.
+- Weak passphrases.
+- User error when choosing plain mode for secrets.
+- Lost passphrases.
+- Lost WebAuthn credentials.
+- Lost or changed WebAuthn origin/RP ID.
+- Browser or authenticator incompatibility with WebAuthn PRF.
+- Damaged, destroyed, or unreadable printed codes without backup copies.
+- A compromised hosted deployment serving malicious JavaScript.
+
+### Supply Chain
+
+Supply-chain compromise is a major threat because the app's security depends on the JavaScript the user runs.
+
+Rules:
 
 - Prefer browser Web Crypto over third-party crypto implementations.
-- Implement only the strict JWE profile needed by the app.
-- Avoid broad JOSE dependencies in v1.
-- Use `qrcode-generator@1.4.4` for QR standards logic instead of maintaining a custom QR encoder.
-- Pin and inventory dependencies.
-- Vendor or bundle runtime dependencies locally.
+- Keep the strict JWE implementation narrow and reviewable.
+- Avoid broad JOSE dependencies unless a later security review shows they are safer.
+- Keep runtime dependencies small, pinned, locally bundled, and documented.
 - Use no CDN runtime scripts.
 - Use no remote fonts.
-- Avoid service workers in v1.
+- Use no service worker in v1.
 - Publish release checksums.
+- Verify no runtime network calls during create or recover.
 
-# Vendored Runtime Dependencies
-
-The deployed `static/vendor/` directory is generated by `npm run build` and is not committed.
-
-The build currently copies:
+Approved runtime dependency:
 
 - `qrcode-generator@1.4.4`
 - Source: `node_modules/qrcode-generator/qrcode.js`
@@ -212,8 +283,6 @@ The build currently copies:
 - Lockfile integrity: `sha512-HM7yY8O2ilqhmULxGMpcHSF1EhJJ9yBj8gvDEuZ6M+KGJ0YY2hKpnXvRD+hZPLrDVck3ExIGhmPtSdcjC+guuw==`
 - Purpose: QR Code matrix generation for recovery URLs.
 
-The v1 runtime still uses browser Web Crypto and local strict-profile JWE Compact code in `static/app.js` plus passkey support in `static/passkey.js`. Recovery is handled through URL fragments or manual paste; the app does not request camera access.
-
-## License
+### License
 
 Apache License 2.0. See [LICENSE](LICENSE).

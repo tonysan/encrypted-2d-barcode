@@ -5,7 +5,7 @@
   const ENCRYPTED_PREFIX = "ERK1.";
   const PLAIN_PREFIX = "ERP1.";
   const PASSWORD_ALG = "PBES2-HS512+A256KW";
-  const DIRECT_ALG = "dir";
+  const WEBAUTHN_ALG = "A256KW";
   const CONTENT_ALG = "A256GCM";
   const DEFAULT_P2C = 210000;
   const MAX_P2C = 5000000;
@@ -19,7 +19,7 @@
   const AES_GCM_IV_BYTES = 12;
   const WEBAUTHN_TIMEOUT_MS = 120000;
   const WEBAUTHN_HKDF_SALT_LABEL = "encrypted-2d-barcode WebAuthn PRF HKDF salt v1";
-  const WEBAUTHN_HKDF_INFO_LABEL = "ERK1 WebAuthn PRF A256GCM direct key v1";
+  const WEBAUTHN_HKDF_INFO_LABEL = "ERK1 WebAuthn PRF A256KW KEK v1";
   const PASSKEY_CREDENTIAL_STORAGE_KEY = "erk1.passkeyCredential.v1";
   const WEBAUTHN_TRANSPORTS = ["hybrid", "internal", "usb", "nfc", "ble"];
   const WEBAUTHN_HINTS = ["hybrid", "client-device", "security-key"];
@@ -37,7 +37,7 @@
   const MSG_PASSPHRASE_MISMATCH = "The passphrases do not match.";
   const MSG_PASSKEY_ACK_REQUIRED = "Confirm that the same passkey is needed to decrypt later.";
   const MSG_PLAIN_MODE_WARNING = "Generate code with no redirect or tracking. Plain mode is not encrypted. Anyone who scans the code can read it.";
-  const MSG_WEBAUTHN_MODE_NOTICE = "Passkey mode can use this device, a phone, or a security key. The same passkey can protect many codes.";
+  const MSG_WEBAUTHN_MODE_NOTICE = "Passkey mode can use this device, a phone, or a security key. Your browser may require biometric or PIN verification.";
   const MSG_WEBAUTHN_SETUP_FAILED = "Passkey is not available. Switched back to passphrase mode.";
   const MSG_WEBAUTHN_SETUP_CANCELLED = "Passkey was cancelled, or not supported. Switched back to passphrase mode.";
   const MSG_WEBAUTHN_SETUP_GENERIC = "Passkey did not work. Switched back to passphrase mode.";
@@ -80,8 +80,6 @@
   const MSG_MALFORMED_CREDENTIAL_ID = "Malformed WebAuthn credential ID.";
   const MSG_MALFORMED_PRF_SALT = "Malformed WebAuthn PRF salt.";
   const MSG_EXPECTED_JWE = "Expected JWE Compact Serialization.";
-  const MSG_DIRECT_NO_ENCRYPTED_KEY = "Direct JWE must not contain an encrypted key.";
-  const MSG_WRONG_DIRECT_KEY = "Wrong direct key or corrupted payload.";
   const MSG_INVALID_RP_ID = "Invalid WebAuthn RP ID.";
   const MSG_NO_CRYPTO = "Web Crypto is not available.";
   const MSG_EXPECTED_BINARY = "Expected binary data.";
@@ -100,7 +98,7 @@
   const MSG_WEBAUTHN_WRONG_CREDENTIAL = "Wrong WebAuthn credential or corrupted payload.";
   const MSG_WEBAUTHN_DIFFERENT_RP = "This WebAuthn code was created for RP ID ";
   const MSG_WEBAUTHN_DIFFERENT_RP_PAGE = ", but this page is ";
-  const MSG_INVALID_DIRECT_KEY_SIZE = "Direct JWE key must be 256 bits.";
+  const MSG_INVALID_WEBAUTHN_KEK_SIZE = "WebAuthn KEK must be 256 bits.";
   const MSG_INVALID_IV_SIZE = "AES-GCM IV must be 96 bits.";
   const MSG_INVALID_PRF_OUTPUT_SIZE = "WebAuthn PRF output must be 256 bits.";
   const MSG_INVALID_PRF_SALT_SIZE = "WebAuthn PRF salt must be 256 bits.";
@@ -116,7 +114,7 @@
     ENCRYPTED_PREFIX,
     PLAIN_PREFIX,
     PASSWORD_ALG,
-    DIRECT_ALG,
+    WEBAUTHN_ALG,
     CONTENT_ALG,
     DEFAULT_P2C,
     MAX_P2C,
@@ -187,8 +185,6 @@
     MSG_MALFORMED_CREDENTIAL_ID,
     MSG_MALFORMED_PRF_SALT,
     MSG_EXPECTED_JWE,
-    MSG_DIRECT_NO_ENCRYPTED_KEY,
-    MSG_WRONG_DIRECT_KEY,
     MSG_INVALID_RP_ID,
     MSG_NO_CRYPTO,
     MSG_EXPECTED_BINARY,
@@ -207,7 +203,7 @@
     MSG_WEBAUTHN_WRONG_CREDENTIAL,
     MSG_WEBAUTHN_DIFFERENT_RP,
     MSG_WEBAUTHN_DIFFERENT_RP_PAGE,
-    MSG_INVALID_DIRECT_KEY_SIZE,
+    MSG_INVALID_WEBAUTHN_KEK_SIZE,
     MSG_INVALID_IV_SIZE,
     MSG_INVALID_PRF_OUTPUT_SIZE,
     MSG_INVALID_PRF_SALT_SIZE,

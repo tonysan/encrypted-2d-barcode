@@ -1,5 +1,9 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const app = require("../static/init.js");
+
+const rootDir = path.resolve(__dirname, "..");
 
 async function rejectsWith(fn, pattern) {
   let rejected = false;
@@ -10,6 +14,34 @@ async function rejectsWith(fn, pattern) {
     assert.match(error.message, pattern);
   }
   assert.equal(rejected, true, "Expected rejection");
+}
+
+function readRootFile(fileName) {
+  return fs.readFileSync(path.join(rootDir, fileName), "utf8");
+}
+
+async function testMarkdownInventory() {
+  for (const fileName of ["README.md", "SECURITY.md", "AGENT.md", "LICENSE"]) {
+    assert.equal(fs.existsSync(path.join(rootDir, fileName)), true, `${fileName} should exist`);
+  }
+  for (const fileName of ["SELF_HOSTING.md", "THREAT_MODEL.md", "IMPLEMENTATION_PLAN.md"]) {
+    assert.equal(fs.existsSync(path.join(rootDir, fileName)), false, `${fileName} should stay merged`);
+  }
+
+  const readme = readRootFile("README.md");
+  const readmeSections = readme
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith("## "))
+    .map((line) => line.slice(3));
+  assert.deepEqual(readmeSections, [
+    "TLDR",
+    "Quick How To Use",
+    "How To Self Host",
+    "Full Tech Details"
+  ]);
+  assert.match(readme, /not trying to become the canonical hosted QR service/);
+  assert.match(readRootFile("SECURITY.md"), /README\.md/);
+  assert.match(readRootFile("AGENT.md"), /Phase 2 preserved the current passkey credential-selection behavior/);
 }
 
 async function testBase64Url() {
@@ -109,7 +141,7 @@ async function testPassphraseJweRoundtrip() {
   assert.equal(await app.decryptPassphraseJwe(shortPassphraseCompact, "x"), "short passphrase secret");
 }
 
-function fixedDirectHeader() {
+function fixedWebAuthnHeader() {
   const credentialId = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
   const prfSalt = new Uint8Array(32);
   for (let index = 0; index < prfSalt.length; index += 1) {
@@ -122,22 +154,14 @@ function zeroKey() {
   return new Uint8Array(32);
 }
 
-function fixedIv() {
-  const iv = new Uint8Array(12);
-  for (let index = 0; index < iv.length; index += 1) {
-    iv[index] = 0xa0 + index;
-  }
-  return iv;
-}
-
-async function testDirectJweShape() {
-  const header = fixedDirectHeader();
-  const compact = await app.encryptDirectJwe("direct secret", zeroKey(), header, { iv: fixedIv() });
+async function testWebAuthnWrappedJweShape() {
+  const header = fixedWebAuthnHeader();
+  const compact = await app.encryptWebAuthnWrappedJwe("passkey secret", zeroKey(), header);
   const parts = compact.split(".");
   assert.equal(parts.length, 5);
-  assert.equal(parts[1], "");
+  assert.equal(app.base64UrlDecode(parts[1]).length, 40);
   const parsed = app.parseProtectedHeader(parts[0]);
-  assert.equal(parsed.alg, "dir");
+  assert.equal(parsed.alg, "A256KW");
   assert.equal(parsed.enc, "A256GCM");
   assert.equal(parsed.app, "erk-webauthn-prf-v1");
   assert.equal(parsed.cid, header.cid);
@@ -145,25 +169,25 @@ async function testDirectJweShape() {
   assert.equal(parsed.ps, header.ps);
 }
 
-async function testDirectHeaderValidation() {
-  const header = fixedDirectHeader();
-  const metadata = app.validateDirectHeader(header);
+async function testWebAuthnHeaderValidation() {
+  const header = fixedWebAuthnHeader();
+  const metadata = app.validateWebAuthnHeader(header);
   assert.equal(metadata.credentialId.length, 8);
   assert.equal(metadata.prfSalt.length, 32);
   assert.equal(metadata.rpId, "encrypt.tonysan.fun");
 
   assert.throws(
-    () => app.validateDirectHeader({ ...header, kid: "https://example.com/key" }),
+    () => app.validateWebAuthnHeader({ ...header, kid: "https://example.com/key" }),
     /Unsupported JWE protected header/
   );
   assert.throws(
-    () => app.validateDirectHeader({ alg: "dir", enc: "A256GCM" }),
-    /Unsupported WebAuthn PRF profile/
+    () => app.validateWebAuthnHeader({ ...header, alg: "dir" }),
+    /Unsupported JWE algorithm/
   );
 }
 
 async function testWebAuthnCredentialDescriptorAllowsMobile() {
-  const header = fixedDirectHeader();
+  const header = fixedWebAuthnHeader();
   const descriptor = app.makeWebAuthnCredentialDescriptor(header.cid);
   assert.equal(descriptor.type, "public-key");
   assert.equal(descriptor.id.length, 8);
@@ -172,21 +196,23 @@ async function testWebAuthnCredentialDescriptorAllowsMobile() {
 }
 
 async function testPasskeyCreationUsesStableLabel() {
-  const metadata = app.validateDirectHeader(fixedDirectHeader());
+  const metadata = app.validateWebAuthnHeader(fixedWebAuthnHeader());
   const options = app.makeWebAuthnPrfCreationOptions(metadata.prfSalt, metadata.rpId);
   assert.equal(options.publicKey.rp.name, "Encrypted 2D Barcode");
   assert.equal(options.publicKey.user.name, "Encrypted 2D Barcode");
   assert.equal(options.publicKey.user.displayName, "Encrypted 2D Barcode");
   assert.equal(app.utf8Decode(options.publicKey.user.id), "encrypted-2d-barcode-passkey-v1");
   assert.equal(options.publicKey.authenticatorSelection.residentKey, "required");
+  assert.equal(options.publicKey.authenticatorSelection.userVerification, "required");
   assert.equal(options.publicKey.hints.includes("hybrid"), true);
 }
 
 async function testDiscoverablePasskeyRequestReadsExistingCredential() {
-  const metadata = app.validateDirectHeader(fixedDirectHeader());
+  const metadata = app.validateWebAuthnHeader(fixedWebAuthnHeader());
   const options = app.makeDiscoverableWebAuthnPrfRequestOptions(metadata.prfSalt, metadata.rpId);
   assert.equal(options.publicKey.rpId, "encrypt.tonysan.fun");
   assert.equal(options.publicKey.challenge.length, 32);
+  assert.equal(options.publicKey.userVerification, "required");
   assert.equal(Object.hasOwn(options.publicKey, "allowCredentials"), false);
   assert.equal(options.publicKey.hints.includes("hybrid"), true);
   assert.equal(options.publicKey.extensions.prf.eval.first.length, 32);
@@ -194,76 +220,84 @@ async function testDiscoverablePasskeyRequestReadsExistingCredential() {
 }
 
 async function testBoundPasskeyRequestUsesStoredCredentialId() {
-  const header = fixedDirectHeader();
-  const metadata = app.validateDirectHeader(header);
+  const header = fixedWebAuthnHeader();
+  const metadata = app.validateWebAuthnHeader(header);
   const options = app.makeBoundWebAuthnPrfRequestOptions(header.cid, metadata.prfSalt, metadata.rpId);
   assert.equal(options.publicKey.rpId, "encrypt.tonysan.fun");
   assert.equal(options.publicKey.allowCredentials.length, 1);
+  assert.equal(options.publicKey.userVerification, "required");
   assert.equal(options.publicKey.allowCredentials[0].transports.includes("hybrid"), true);
   assert.equal(options.publicKey.extensions.prf.evalByCredential[header.cid].first.length, 32);
   assert.equal(Object.hasOwn(options.publicKey.extensions.prf, "eval"), false);
 }
 
-async function testDirectJweRoundtrip() {
-  const compact = await app.encryptDirectJwe("direct secret", zeroKey(), fixedDirectHeader(), { iv: fixedIv() });
-  assert.equal(await app.decryptDirectJwe(compact, zeroKey()), "direct secret");
+async function testWebAuthnWrappedJweRoundtrip() {
+  const compact = await app.encryptWebAuthnWrappedJwe("passkey secret", zeroKey(), fixedWebAuthnHeader());
+  assert.equal(await app.decryptWebAuthnWrappedJwe(compact, zeroKey()), "passkey secret");
 }
 
-async function testWrongDirectKey() {
-  const compact = await app.encryptDirectJwe("direct secret", zeroKey(), fixedDirectHeader(), { iv: fixedIv() });
+async function testWrongWebAuthnKek() {
+  const compact = await app.encryptWebAuthnWrappedJwe("passkey secret", zeroKey(), fixedWebAuthnHeader());
   const wrongKey = new Uint8Array(32);
   wrongKey.fill(1);
   await rejectsWith(
-    () => app.decryptDirectJwe(compact, wrongKey),
-    /Wrong direct key|corrupted/
+    () => app.decryptWebAuthnWrappedJwe(compact, wrongKey),
+    /Wrong WebAuthn credential|corrupted/
   );
 }
 
-async function testCorruptedDirectCiphertext() {
-  const compact = await app.encryptDirectJwe("direct secret", zeroKey(), fixedDirectHeader(), { iv: fixedIv() });
+async function testCorruptedWebAuthnCiphertext() {
+  const compact = await app.encryptWebAuthnWrappedJwe("passkey secret", zeroKey(), fixedWebAuthnHeader());
   const parts = compact.split(".");
   parts[3] = (parts[3][0] === "A" ? "B" : "A") + parts[3].slice(1);
   await rejectsWith(
-    () => app.decryptDirectJwe(parts.join("."), zeroKey()),
-    /Wrong direct key|corrupted/
+    () => app.decryptWebAuthnWrappedJwe(parts.join("."), zeroKey()),
+    /Wrong WebAuthn credential|corrupted/
   );
 }
 
-async function testDirectEncryptedKeySegmentRejection() {
-  const compact = await app.encryptDirectJwe("direct secret", zeroKey(), fixedDirectHeader(), { iv: fixedIv() });
-  const parts = compact.split(".");
-  parts[1] = "AA";
-  await rejectsWith(
-    () => app.decryptDirectJwe(parts.join("."), zeroKey()),
-    /Direct JWE must not contain an encrypted key/
+async function testLegacyDirectWebAuthnPayloadRejection() {
+  const header = { ...fixedWebAuthnHeader(), alg: "dir" };
+  const protectedSegment = app.base64UrlEncode(app.utf8Encode(JSON.stringify(header)));
+  const legacyCompact = [
+    protectedSegment,
+    "",
+    app.base64UrlEncode(new Uint8Array(12)),
+    app.base64UrlEncode(app.utf8Encode("ciphertext")),
+    app.base64UrlEncode(new Uint8Array(16))
+  ].join(".");
+  assert.throws(
+    () => app.detectPayload(app.ENCRYPTED_PREFIX + legacyCompact),
+    /Unsupported encrypted payload/
   );
 }
 
 async function testWebAuthnPayloadDetection() {
-  const compact = await app.encryptDirectJwe("direct secret", zeroKey(), fixedDirectHeader(), { iv: fixedIv() });
+  const compact = await app.encryptWebAuthnWrappedJwe("passkey secret", zeroKey(), fixedWebAuthnHeader());
   const detected = app.detectPayload(app.ENCRYPTED_PREFIX + compact);
   assert.equal(detected.kind, "webauthn");
   assert.equal(detected.label, "Passkey-protected code");
 }
 
 async function testWebAuthnHkdfProfile() {
-  const header = fixedDirectHeader();
-  const metadata = app.validateDirectHeader(header);
+  const header = fixedWebAuthnHeader();
+  const metadata = app.validateWebAuthnHeader(header);
   const prfOutput = new Uint8Array(32);
   prfOutput.fill(0x42);
-  const first = await app.deriveWebAuthnDirectKeyBytes(prfOutput, metadata);
-  const second = await app.deriveWebAuthnDirectKeyBytes(prfOutput, metadata);
+  const first = await app.deriveWebAuthnKekBytes(prfOutput, metadata);
+  const second = await app.deriveWebAuthnKekBytes(prfOutput, metadata);
   assert.equal(first.length, 32);
   assert.deepEqual(first, second);
+  assert.equal(Buffer.from(first).toString("hex"), "9bd9cf8717a8bf0252e4607ace6d85f9df11ae6ed7e963d6f09cd93bf711be14");
 
   const changedHeader = app.makeWebAuthnProtectedHeader(
     metadata.credentialId,
     "example.com",
     metadata.prfSalt
   );
-  const changed = await app.deriveWebAuthnDirectKeyBytes(
+  const changed = await app.deriveWebAuthnKekBytes(
     prfOutput,
-    app.validateDirectHeader(changedHeader)
+    app.validateWebAuthnHeader(changedHeader)
   );
   assert.notDeepEqual(first, changed);
 }
@@ -365,6 +399,7 @@ async function testPassphraseQrRenderPlan() {
 
 async function run() {
   const tests = [
+    testMarkdownInventory,
     testBase64Url,
     testPlainPayload,
     testLegacyPlainPayload,
@@ -377,16 +412,16 @@ async function run() {
     testQrContentUsesPayloadForLocalFile,
     testInitialViewFromFragment,
     testPassphraseJweRoundtrip,
-    testDirectJweShape,
-    testDirectHeaderValidation,
+    testWebAuthnWrappedJweShape,
+    testWebAuthnHeaderValidation,
     testWebAuthnCredentialDescriptorAllowsMobile,
     testPasskeyCreationUsesStableLabel,
     testDiscoverablePasskeyRequestReadsExistingCredential,
     testBoundPasskeyRequestUsesStoredCredentialId,
-    testDirectJweRoundtrip,
-    testWrongDirectKey,
-    testCorruptedDirectCiphertext,
-    testDirectEncryptedKeySegmentRejection,
+    testWebAuthnWrappedJweRoundtrip,
+    testWrongWebAuthnKek,
+    testCorruptedWebAuthnCiphertext,
+    testLegacyDirectWebAuthnPayloadRejection,
     testWebAuthnPayloadDetection,
     testWebAuthnHkdfProfile,
     testEmptyPassphraseRejection,
