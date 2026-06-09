@@ -79,6 +79,9 @@
   const MSG_RECOVERY_INPUT_TOO_LARGE = "Recovery input is too large for this app. Multi-code splitting is future work.";
   const MSG_JWE_TOO_LARGE = "Encrypted payload is too large for this app. Multi-code splitting is future work.";
   const MSG_UNSUPPORTED_ENCRYPTION_OPTION = "Unsupported encryption option.";
+  const MSG_CREATE_SIZE_WARNING_PREFIX = "Content is near the one-code limit: ";
+  const MSG_CREATE_SIZE_WARNING_SEPARATOR = " of ";
+  const MSG_CREATE_SIZE_WARNING_SUFFIX = " bytes used.";
 
   // Internal error messages
   const MSG_INVALID_BASE64URL = "Invalid base64url value.";
@@ -199,6 +202,9 @@
     MSG_RECOVERY_INPUT_TOO_LARGE,
     MSG_JWE_TOO_LARGE,
     MSG_UNSUPPORTED_ENCRYPTION_OPTION,
+    MSG_CREATE_SIZE_WARNING_PREFIX,
+    MSG_CREATE_SIZE_WARNING_SEPARATOR,
+    MSG_CREATE_SIZE_WARNING_SUFFIX,
     MSG_INVALID_BASE64URL,
     MSG_MALFORMED_HEADER,
     MSG_UNSUPPORTED_HEADER,

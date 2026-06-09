@@ -244,6 +244,8 @@ Current reviewed limits:
 - Decoded protected header: 768 bytes.
 - Inbound PBES2 `p2c`: 1000000.
 
+The create form warns at 80% of the active mode's input limit and blocks generation before encryption if the content is already too large for one code.
+
 ### Threat Model
 
 The app is intended to protect against:

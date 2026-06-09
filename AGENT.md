@@ -97,6 +97,7 @@ The user explicitly skipped this phase for now.
 - Added reviewed size caps for encrypted plaintext, plain QR content, final QR content, recovery input, compact JWE, JWE segments, protected header, and inbound `p2c`.
 - Current cap values: encrypted plaintext 512 UTF-8 bytes, plain QR content 1800 UTF-8 bytes, final QR content 1800 UTF-8 bytes, recovery input 4096 UTF-8 bytes, compact JWE 3072 chars, JWE segment 2048 chars, decoded protected header 768 bytes, inbound `p2c` 1000000.
 - Oversized-content errors explain that multi-code splitting is future work.
+- The create form warns at 80% of the active mode's input limit and blocks generation before encryption when content is over the limit.
 - Public/browser JWE APIs do not accept caller-supplied IVs.
 - WebAuthn KEK CryptoKey inputs are validated for AES-KW, 256-bit length, `secret` type, and required usages.
 

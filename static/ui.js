@@ -82,6 +82,9 @@
     MSG_RECOVERY_INPUT_TOO_LARGE,
     MSG_JWE_TOO_LARGE,
     MSG_UNSUPPORTED_ENCRYPTION_OPTION,
+    MSG_CREATE_SIZE_WARNING_PREFIX,
+    MSG_CREATE_SIZE_WARNING_SEPARATOR,
+    MSG_CREATE_SIZE_WARNING_SUFFIX,
     MSG_INVALID_BASE64URL,
     MSG_MALFORMED_HEADER,
     MSG_UNSUPPORTED_HEADER,
@@ -326,6 +329,33 @@
       setHidden(elements.createMessage, false);
     }
 
+    function getCreateSizeState(mode, text) {
+      const limit = mode === "plain" ? MAX_PLAIN_QR_CONTENT_BYTES : MAX_ENCRYPTED_PLAINTEXT_BYTES;
+      const tooLargeMessage = mode === "plain" ? MSG_PLAIN_QR_TOO_LARGE : MSG_ENCRYPTED_PLAINTEXT_TOO_LARGE;
+      const bytes = app.utf8Encode(text).length;
+      return {
+        bytes,
+        limit,
+        tooLargeMessage,
+        warningAt: Math.floor(limit * 0.8)
+      };
+    }
+
+    function buildCreateSizeWarning(state) {
+      return MSG_CREATE_SIZE_WARNING_PREFIX +
+        state.bytes +
+        MSG_CREATE_SIZE_WARNING_SEPARATOR +
+        state.limit +
+        MSG_CREATE_SIZE_WARNING_SUFFIX;
+    }
+
+    function enforceCreateSizeLimit(mode, text) {
+      const state = getCreateSizeState(mode, text);
+      if (state.bytes > state.limit) {
+        throw new Error(state.tooLargeMessage);
+      }
+    }
+
     function showCreateError(error) {
       clearError(elements.createError);
       setCreateMessage("error", error && error.message ? error.message : String(error));
@@ -410,10 +440,19 @@
       ].includes(message);
     }
 
-    function updateModeUi() {
+    function updateCreateMessage() {
       const mode = currentCreateMode();
-      setHidden(elements.createPassphraseFields, mode !== "passphrase");
-      setHidden(elements.webauthnCreateFields, mode !== "webauthn");
+      const text = elements.secretInput.value;
+      const state = getCreateSizeState(mode, text);
+      elements.createButton.disabled = text.length > 0 && state.bytes > state.limit;
+      if (text.length > 0 && state.bytes > state.limit) {
+        setCreateMessage("error", state.tooLargeMessage);
+        return;
+      }
+      if (text.length > 0 && state.bytes >= state.warningAt) {
+        setCreateMessage("warning", buildCreateSizeWarning(state));
+        return;
+      }
       if (mode === "plain") {
         setCreateMessage("warning", MSG_PLAIN_MODE_WARNING);
       } else if (mode === "webauthn") {
@@ -421,6 +460,13 @@
       } else {
         setCreateMessage("", "");
       }
+    }
+
+    function updateModeUi() {
+      const mode = currentCreateMode();
+      setHidden(elements.createPassphraseFields, mode !== "passphrase");
+      setHidden(elements.webauthnCreateFields, mode !== "webauthn");
+      updateCreateMessage();
     }
 
     function setAppView(view) {
@@ -498,6 +544,7 @@
           throw new Error(MSG_EMPTY_SECRET);
         }
         mode = currentCreateMode();
+        enforceCreateSizeLimit(mode, text);
         if (mode === "plain") {
           renderOutput(app.encodePlainPayload(text), MSG_PLAIN_MODE_LABEL, "plain");
           return;
@@ -627,6 +674,10 @@
 
     document.querySelectorAll("input[name='create-mode']").forEach((input) => {
       input.addEventListener("change", updateModeUi);
+    });
+    elements.secretInput.addEventListener("input", () => {
+      clearError(elements.createError);
+      updateCreateMessage();
     });
     elements.createButton.addEventListener("click", createPayload);
     elements.clearCreateButton.addEventListener("click", () => {
