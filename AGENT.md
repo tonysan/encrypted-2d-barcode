@@ -84,19 +84,21 @@ Legacy pre-release `alg=dir` passkey payloads are intentionally rejected. Keep t
 - Reject old `alg=dir` WebAuthn payloads.
 - Update tests and README tech details after implementation.
 
-### Phase 3: Passphrase UX
+### Skipped Phase 3: Passphrase UX
 
 - Add non-blocking strength feedback.
 - Add visible offline-guessing warning.
 - Continue allowing any non-empty passphrase.
 
-### Phase 4: Defensive Limits And Crypto API Cleanup
+The user explicitly skipped this phase for now.
 
-- Add reviewed size caps for plaintext, plain QR content, final QR content, recovery input, compact JWE, JWE segments, protected header, and inbound `p2c`.
-- Make oversized-content errors explain that multi-code splitting is future work.
-- Remove caller-supplied IV support from public/browser JWE APIs.
-- Keep deterministic IV support only for tests/private internals.
-- Validate CryptoKey algorithm, type, length, and usages instead of loose duck-typing.
+### Completed Phase 4: Defensive Limits And Crypto API Cleanup
+
+- Added reviewed size caps for encrypted plaintext, plain QR content, final QR content, recovery input, compact JWE, JWE segments, protected header, and inbound `p2c`.
+- Current cap values: encrypted plaintext 512 UTF-8 bytes, plain QR content 1800 UTF-8 bytes, final QR content 1800 UTF-8 bytes, recovery input 4096 UTF-8 bytes, compact JWE 3072 chars, JWE segment 2048 chars, decoded protected header 768 bytes, inbound `p2c` 1000000.
+- Oversized-content errors explain that multi-code splitting is future work.
+- Public/browser JWE APIs do not accept caller-supplied IVs.
+- WebAuthn KEK CryptoKey inputs are validated for AES-KW, 256-bit length, `secret` type, and required usages.
 
 ### Phase 5: Recovery Check Mode
 

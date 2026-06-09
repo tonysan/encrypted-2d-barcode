@@ -229,6 +229,21 @@ This app intentionally implements only the small JWE subset it needs with browse
 
 The implementation must reject unsupported algorithms, unsupported encryption methods, unsupported protected headers, remote key references such as `jku` or `x5u`, compression, and unreviewed JWE behavior.
 
+### Single-Code Limits
+
+The app is currently scoped to compact single-code payloads. Oversized input fails early with a message that multi-code splitting is future work.
+
+Current reviewed limits:
+
+- Encrypted plaintext: 512 UTF-8 bytes.
+- Plain QR content: 1800 UTF-8 bytes.
+- Final QR content: 1800 UTF-8 bytes.
+- Recovery input: 4096 UTF-8 bytes.
+- Compact JWE: 3072 characters.
+- JWE segment: 2048 characters.
+- Decoded protected header: 768 bytes.
+- Inbound PBES2 `p2c`: 1000000.
+
 ### Threat Model
 
 The app is intended to protect against:

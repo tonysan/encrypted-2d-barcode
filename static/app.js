@@ -15,6 +15,13 @@
     DEFAULT_P2C,
     MAX_P2C,
     GCM_TAG_BYTES,
+    MAX_ENCRYPTED_PLAINTEXT_BYTES,
+    MAX_PLAIN_QR_CONTENT_BYTES,
+    MAX_QR_CONTENT_BYTES,
+    MAX_RECOVERY_INPUT_BYTES,
+    MAX_COMPACT_JWE_CHARS,
+    MAX_JWE_SEGMENT_CHARS,
+    MAX_PROTECTED_HEADER_BYTES,
     QR_ERROR_CORRECTION,
     QR_MARGIN_MODULES,
     QR_MODULE_PIXELS,
@@ -69,6 +76,12 @@
     MSG_PRF_FAILED,
     MSG_CLEAR_BUTTON,
     MSG_CONFIRM_BUTTON,
+    MSG_ENCRYPTED_PLAINTEXT_TOO_LARGE,
+    MSG_PLAIN_QR_TOO_LARGE,
+    MSG_QR_CONTENT_TOO_LARGE,
+    MSG_RECOVERY_INPUT_TOO_LARGE,
+    MSG_JWE_TOO_LARGE,
+    MSG_UNSUPPORTED_ENCRYPTION_OPTION,
     MSG_INVALID_BASE64URL,
     MSG_MALFORMED_HEADER,
     MSG_UNSUPPORTED_HEADER,
@@ -99,7 +112,7 @@
     MSG_WEBAUTHN_WRONG_CREDENTIAL,
     MSG_WEBAUTHN_DIFFERENT_RP,
     MSG_WEBAUTHN_DIFFERENT_RP_PAGE,
-    MSG_INVALID_WEBAUTHN_KEK_SIZE,
+    MSG_INVALID_WEBAUTHN_KEK,
     MSG_INVALID_IV_SIZE,
     MSG_INVALID_PRF_OUTPUT_SIZE,
     MSG_INVALID_PRF_SALT_SIZE,
@@ -140,6 +153,30 @@
 
   function utf8Decode(bytes) {
     return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  }
+
+  function utf8ByteLength(value) {
+    return utf8Encode(String(value)).length;
+  }
+
+  function assertUtf8ByteLimit(value, maxBytes, message) {
+    if (utf8ByteLength(value) > maxBytes) {
+      throw new Error(message);
+    }
+  }
+
+  function assertStringLengthLimit(value, maxChars, message) {
+    if (String(value).length > maxChars) {
+      throw new Error(message);
+    }
+  }
+
+  function assertEncryptedPlaintextLimit(plaintext) {
+    assertUtf8ByteLimit(plaintext, MAX_ENCRYPTED_PLAINTEXT_BYTES, MSG_ENCRYPTED_PLAINTEXT_TOO_LARGE);
+  }
+
+  function assertQrContentLimit(text) {
+    assertUtf8ByteLimit(text, MAX_QR_CONTENT_BYTES, MSG_QR_CONTENT_TOO_LARGE);
   }
 
   function toUint8Array(value) {
@@ -235,6 +272,7 @@
   // Plain mode deliberately has no envelope: the QR payload is exactly the user
   // string. That keeps unencrypted codes small and easy to inspect.
   function encodePlainPayload(text) {
+    assertUtf8ByteLimit(text, MAX_PLAIN_QR_CONTENT_BYTES, MSG_PLAIN_QR_TOO_LARGE);
     return String(text);
   }
 
@@ -339,7 +377,11 @@
   // Headers come from the QR/URL and are therefore untrusted. Decode and parse
   // them before the stricter profile validation below.
   function parseProtectedHeader(protectedSegment) {
-    const raw = utf8Decode(base64UrlDecode(protectedSegment));
+    const rawBytes = base64UrlDecode(protectedSegment);
+    if (rawBytes.length > MAX_PROTECTED_HEADER_BYTES) {
+      throw new Error(MSG_JWE_TOO_LARGE);
+    }
+    const raw = utf8Decode(rawBytes);
     let header;
     try {
       header = JSON.parse(raw);
@@ -414,9 +456,16 @@
   // Compact JWE is exactly five dot-separated segments:
   // protected header, encrypted key, IV, ciphertext, authentication tag.
   function splitCompactJwe(compactJwe) {
+    if (typeof compactJwe !== "string" || compactJwe.length === 0) {
+      throw new Error(MSG_EXPECTED_JWE);
+    }
+    assertStringLengthLimit(compactJwe, MAX_COMPACT_JWE_CHARS, MSG_JWE_TOO_LARGE);
     const parts = compactJwe.split(".");
     if (parts.length !== 5) {
       throw new Error(MSG_EXPECTED_JWE);
+    }
+    for (const part of parts) {
+      assertStringLengthLimit(part, MAX_JWE_SEGMENT_CHARS, MSG_JWE_TOO_LARGE);
     }
     return {
       protectedSegment: parts[0],
@@ -432,8 +481,16 @@
   // 2. passphrase-derived KEK wraps that CEK with AES-KW;
   // 3. the protected header segment is authenticated as AES-GCM AAD.
   async function encryptPassphraseJwe(plaintext, passphrase, options) {
+    assertEncryptedPlaintextLimit(plaintext);
     const normalizedPassphrase = normalizePassphrase(passphrase);
     const crypto = getCrypto();
+    if (options) {
+      for (const key of Object.keys(options)) {
+        if (key !== "p2c") {
+          throw new Error(MSG_UNSUPPORTED_ENCRYPTION_OPTION);
+        }
+      }
+    }
     const p2c = options && options.p2c ? options.p2c : DEFAULT_P2C;
     if (!Number.isInteger(p2c) || p2c < 1000 || p2c > MAX_P2C) {
       throw new Error(MSG_UNSUPPORTED_P2C_OPTION);
@@ -468,13 +525,15 @@
     ));
     const ciphertext = encrypted.slice(0, encrypted.length - GCM_TAG_BYTES);
     const tag = encrypted.slice(encrypted.length - GCM_TAG_BYTES);
-    return [
+    const compactJwe = [
       protectedSegment,
       base64UrlEncode(encryptedKey),
       base64UrlEncode(iv),
       base64UrlEncode(ciphertext),
       base64UrlEncode(tag)
     ].join(".");
+    assertStringLengthLimit(compactJwe, MAX_COMPACT_JWE_CHARS, MSG_JWE_TOO_LARGE);
+    return compactJwe;
   }
 
   // Recover the passphrase JWE by validating the protected header first, then
@@ -522,17 +581,39 @@
     }
   }
 
-  function looksLikeCryptoKey(value) {
-    return Boolean(value && typeof value === "object" && value.type && value.algorithm && value.usages);
+  function isCryptoKey(value) {
+    if (!value || typeof value !== "object") {
+      return false;
+    }
+    const CryptoKeyConstructor = root.CryptoKey || (typeof CryptoKey !== "undefined" ? CryptoKey : null);
+    if (CryptoKeyConstructor) {
+      return value instanceof CryptoKeyConstructor;
+    }
+    return Object.prototype.toString.call(value) === "[object CryptoKey]";
+  }
+
+  function validateAesKwCryptoKey(key, usages) {
+    const algorithm = key.algorithm || {};
+    const keyUsages = Array.isArray(key.usages) ? key.usages : [];
+    const hasUsages = usages.every((usage) => keyUsages.includes(usage));
+    if (
+      key.type !== "secret" ||
+      algorithm.name !== "AES-KW" ||
+      algorithm.length !== 256 ||
+      !hasUsages
+    ) {
+      throw new Error(MSG_INVALID_WEBAUTHN_KEK);
+    }
   }
 
   async function importAesKwKey(keyMaterial, usages) {
-    if (looksLikeCryptoKey(keyMaterial)) {
+    if (isCryptoKey(keyMaterial)) {
+      validateAesKwCryptoKey(keyMaterial, usages);
       return keyMaterial;
     }
     const keyBytes = toUint8Array(keyMaterial);
     if (keyBytes.length !== AES_256_KEY_BYTES) {
-      throw new Error(MSG_INVALID_WEBAUTHN_KEK_SIZE);
+      throw new Error(MSG_INVALID_WEBAUTHN_KEK);
     }
     return getCrypto().subtle.importKey(
       "raw",
@@ -544,6 +625,7 @@
   }
 
   async function encryptWebAuthnWrappedJwe(plaintext, kekMaterial, header) {
+    assertEncryptedPlaintextLimit(plaintext);
     const crypto = getCrypto();
     validateWebAuthnHeader(header);
     const iv = randomBytes(AES_GCM_IV_BYTES);
@@ -570,13 +652,15 @@
     ));
     const ciphertext = encrypted.slice(0, encrypted.length - GCM_TAG_BYTES);
     const tag = encrypted.slice(encrypted.length - GCM_TAG_BYTES);
-    return [
+    const compactJwe = [
       protectedSegment,
       base64UrlEncode(encryptedKey),
       base64UrlEncode(iv),
       base64UrlEncode(ciphertext),
       base64UrlEncode(tag)
     ].join(".");
+    assertStringLengthLimit(compactJwe, MAX_COMPACT_JWE_CHARS, MSG_JWE_TOO_LARGE);
+    return compactJwe;
   }
 
   async function decryptWebAuthnWrappedJwe(compactJwe, kekMaterial) {
@@ -637,6 +721,7 @@
   // strings so plain mode can encode URLs without surprise behavior.
   function extractPayloadFromInput(input) {
     const raw = String(input || "");
+    assertUtf8ByteLimit(raw, MAX_RECOVERY_INPUT_BYTES, MSG_RECOVERY_INPUT_TOO_LARGE);
     const trimmed = raw.trim();
     if (!trimmed) {
       throw new Error(MSG_EMPTY_PAYLOAD);
@@ -734,6 +819,7 @@
   // Byte mode keeps arbitrary user strings and JWE payloads in one predictable
   // QR encoding mode while the library handles standards details.
   function createQrCode(text, errorCorrectionLevel) {
+    assertQrContentLimit(text);
     const qr = getQrFactory()(0, errorCorrectionLevel || QR_ERROR_CORRECTION);
     qr.addData(text, "Byte");
     qr.make();
@@ -803,19 +889,28 @@
   // Plain QR mode returns the raw string. Encrypted QR mode uses a URL fragment
   // when hosted so scanning the QR opens this app directly in recovery mode.
   function buildQrContent(payload, locationLike) {
+    let qrContent;
     if (!payload.startsWith(ENCRYPTED_PREFIX)) {
-      return payload;
+      qrContent = payload;
+    } else {
+      const baseUrl = getRecoveryBaseUrl(locationLike);
+      qrContent = baseUrl ? baseUrl + "#" + encodeURIComponent(payload) : payload;
     }
-    const baseUrl = getRecoveryBaseUrl(locationLike);
-    if (!baseUrl) {
-      return payload;
-    }
-    return baseUrl + "#" + encodeURIComponent(payload);
+    assertQrContentLimit(qrContent);
+    return qrContent;
   }
 
   const api = {
     ENCRYPTED_PREFIX,
     PLAIN_PREFIX,
+    MAX_P2C,
+    MAX_ENCRYPTED_PLAINTEXT_BYTES,
+    MAX_PLAIN_QR_CONTENT_BYTES,
+    MAX_QR_CONTENT_BYTES,
+    MAX_RECOVERY_INPUT_BYTES,
+    MAX_COMPACT_JWE_CHARS,
+    MAX_JWE_SEGMENT_CHARS,
+    MAX_PROTECTED_HEADER_BYTES,
     base64UrlEncode,
     base64UrlDecode,
     utf8Encode,

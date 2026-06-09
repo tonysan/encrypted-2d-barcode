@@ -15,6 +15,13 @@
     DEFAULT_P2C,
     MAX_P2C,
     GCM_TAG_BYTES,
+    MAX_ENCRYPTED_PLAINTEXT_BYTES,
+    MAX_PLAIN_QR_CONTENT_BYTES,
+    MAX_QR_CONTENT_BYTES,
+    MAX_RECOVERY_INPUT_BYTES,
+    MAX_COMPACT_JWE_CHARS,
+    MAX_JWE_SEGMENT_CHARS,
+    MAX_PROTECTED_HEADER_BYTES,
     QR_ERROR_CORRECTION,
     QR_MARGIN_MODULES,
     QR_MODULE_PIXELS,
@@ -69,6 +76,12 @@
     MSG_PRF_FAILED,
     MSG_CLEAR_BUTTON,
     MSG_CONFIRM_BUTTON,
+    MSG_ENCRYPTED_PLAINTEXT_TOO_LARGE,
+    MSG_PLAIN_QR_TOO_LARGE,
+    MSG_QR_CONTENT_TOO_LARGE,
+    MSG_RECOVERY_INPUT_TOO_LARGE,
+    MSG_JWE_TOO_LARGE,
+    MSG_UNSUPPORTED_ENCRYPTION_OPTION,
     MSG_INVALID_BASE64URL,
     MSG_MALFORMED_HEADER,
     MSG_UNSUPPORTED_HEADER,
@@ -99,7 +112,7 @@
     MSG_WEBAUTHN_WRONG_CREDENTIAL,
     MSG_WEBAUTHN_DIFFERENT_RP,
     MSG_WEBAUTHN_DIFFERENT_RP_PAGE,
-    MSG_INVALID_WEBAUTHN_KEK_SIZE,
+    MSG_INVALID_WEBAUTHN_KEK,
     MSG_INVALID_IV_SIZE,
     MSG_INVALID_PRF_OUTPUT_SIZE,
     MSG_INVALID_PRF_SALT_SIZE,
@@ -349,6 +362,9 @@
 
     function describePasskeyFailure(error) {
       const detail = error && error.message ? error.message : String(error);
+      if (isSizeLimitMessage(detail)) {
+        return detail;
+      }
       if (/secure context|HTTPS|not allowed|origin|RP ID|unavailable/i.test(detail)) {
         return MSG_WEBAUTHN_SETUP_FAILED;
       }
@@ -375,11 +391,23 @@
         MSG_EMPTY_PAYLOAD,
         MSG_EMPTY_PASSPHRASE,
         MSG_WRONG_PASSPHRASE,
+        MSG_RECOVERY_INPUT_TOO_LARGE,
+        MSG_JWE_TOO_LARGE,
         MSG_WEBAUTHN_RECOVERY_DIFFERENT_SITE,
         MSG_WEBAUTHN_RECOVERY_FAILED,
         MSG_WEBAUTHN_RECOVERY_GENERIC
       ];
       return allowedMessages.includes(detail) ? detail : MSG_UNSUPPORTED_PAYLOAD_TYPE;
+    }
+
+    function isSizeLimitMessage(message) {
+      return [
+        MSG_ENCRYPTED_PLAINTEXT_TOO_LARGE,
+        MSG_PLAIN_QR_TOO_LARGE,
+        MSG_QR_CONTENT_TOO_LARGE,
+        MSG_RECOVERY_INPUT_TOO_LARGE,
+        MSG_JWE_TOO_LARGE
+      ].includes(message);
     }
 
     function updateModeUi() {
@@ -494,6 +522,10 @@
       } catch (error) {
         if (mode === "webauthn") {
           if (error && error.message === MSG_PASSKEY_ACK_REQUIRED) {
+            showCreateError(error);
+            return;
+          }
+          if (error && isSizeLimitMessage(error.message)) {
             showCreateError(error);
             return;
           }

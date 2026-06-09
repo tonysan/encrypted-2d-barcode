@@ -8,8 +8,15 @@
   const WEBAUTHN_ALG = "A256KW";
   const CONTENT_ALG = "A256GCM";
   const DEFAULT_P2C = 210000;
-  const MAX_P2C = 5000000;
+  const MAX_P2C = 1000000;
   const GCM_TAG_BYTES = 16;
+  const MAX_ENCRYPTED_PLAINTEXT_BYTES = 512;
+  const MAX_PLAIN_QR_CONTENT_BYTES = 1800;
+  const MAX_QR_CONTENT_BYTES = 1800;
+  const MAX_RECOVERY_INPUT_BYTES = 4096;
+  const MAX_COMPACT_JWE_CHARS = 3072;
+  const MAX_JWE_SEGMENT_CHARS = 2048;
+  const MAX_PROTECTED_HEADER_BYTES = 768;
   const QR_ERROR_CORRECTION = "M";
   const QR_MARGIN_MODULES = 4;
   const QR_MODULE_PIXELS = 10;
@@ -66,6 +73,12 @@
   const MSG_PRF_FAILED = "Passphrase mode selected";
   const MSG_CLEAR_BUTTON = "Clear";
   const MSG_CONFIRM_BUTTON = "Confirm";
+  const MSG_ENCRYPTED_PLAINTEXT_TOO_LARGE = "Content is too large for one encrypted QR code. Multi-code splitting is future work.";
+  const MSG_PLAIN_QR_TOO_LARGE = "Plain content is too large for one QR code. Multi-code splitting is future work.";
+  const MSG_QR_CONTENT_TOO_LARGE = "QR content is too large for one QR code. Multi-code splitting is future work.";
+  const MSG_RECOVERY_INPUT_TOO_LARGE = "Recovery input is too large for this app. Multi-code splitting is future work.";
+  const MSG_JWE_TOO_LARGE = "Encrypted payload is too large for this app. Multi-code splitting is future work.";
+  const MSG_UNSUPPORTED_ENCRYPTION_OPTION = "Unsupported encryption option.";
 
   // Internal error messages
   const MSG_INVALID_BASE64URL = "Invalid base64url value.";
@@ -98,7 +111,7 @@
   const MSG_WEBAUTHN_WRONG_CREDENTIAL = "Wrong WebAuthn credential or corrupted payload.";
   const MSG_WEBAUTHN_DIFFERENT_RP = "This WebAuthn code was created for RP ID ";
   const MSG_WEBAUTHN_DIFFERENT_RP_PAGE = ", but this page is ";
-  const MSG_INVALID_WEBAUTHN_KEK_SIZE = "WebAuthn KEK must be 256 bits.";
+  const MSG_INVALID_WEBAUTHN_KEK = "WebAuthn KEK must be a 256-bit AES-KW secret key with the required usages.";
   const MSG_INVALID_IV_SIZE = "AES-GCM IV must be 96 bits.";
   const MSG_INVALID_PRF_OUTPUT_SIZE = "WebAuthn PRF output must be 256 bits.";
   const MSG_INVALID_PRF_SALT_SIZE = "WebAuthn PRF salt must be 256 bits.";
@@ -119,6 +132,13 @@
     DEFAULT_P2C,
     MAX_P2C,
     GCM_TAG_BYTES,
+    MAX_ENCRYPTED_PLAINTEXT_BYTES,
+    MAX_PLAIN_QR_CONTENT_BYTES,
+    MAX_QR_CONTENT_BYTES,
+    MAX_RECOVERY_INPUT_BYTES,
+    MAX_COMPACT_JWE_CHARS,
+    MAX_JWE_SEGMENT_CHARS,
+    MAX_PROTECTED_HEADER_BYTES,
     QR_ERROR_CORRECTION,
     QR_MARGIN_MODULES,
     QR_MODULE_PIXELS,
@@ -173,6 +193,12 @@
     MSG_PRF_FAILED,
     MSG_CLEAR_BUTTON,
     MSG_CONFIRM_BUTTON,
+    MSG_ENCRYPTED_PLAINTEXT_TOO_LARGE,
+    MSG_PLAIN_QR_TOO_LARGE,
+    MSG_QR_CONTENT_TOO_LARGE,
+    MSG_RECOVERY_INPUT_TOO_LARGE,
+    MSG_JWE_TOO_LARGE,
+    MSG_UNSUPPORTED_ENCRYPTION_OPTION,
     MSG_INVALID_BASE64URL,
     MSG_MALFORMED_HEADER,
     MSG_UNSUPPORTED_HEADER,
@@ -203,7 +229,7 @@
     MSG_WEBAUTHN_WRONG_CREDENTIAL,
     MSG_WEBAUTHN_DIFFERENT_RP,
     MSG_WEBAUTHN_DIFFERENT_RP_PAGE,
-    MSG_INVALID_WEBAUTHN_KEK_SIZE,
+    MSG_INVALID_WEBAUTHN_KEK,
     MSG_INVALID_IV_SIZE,
     MSG_INVALID_PRF_OUTPUT_SIZE,
     MSG_INVALID_PRF_SALT_SIZE,

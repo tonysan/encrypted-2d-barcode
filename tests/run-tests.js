@@ -154,6 +154,10 @@ function zeroKey() {
   return new Uint8Array(32);
 }
 
+function oversizedAscii(limit) {
+  return "a".repeat(limit + 1);
+}
+
 async function testWebAuthnWrappedJweShape() {
   const header = fixedWebAuthnHeader();
   const compact = await app.encryptWebAuthnWrappedJwe("passkey secret", zeroKey(), header);
@@ -167,6 +171,131 @@ async function testWebAuthnWrappedJweShape() {
   assert.equal(parsed.cid, header.cid);
   assert.equal(parsed.rp, "encrypt.tonysan.fun");
   assert.equal(parsed.ps, header.ps);
+}
+
+async function testDefensiveSizeLimits() {
+  await rejectsWith(
+    () => app.encryptPassphraseJwe(oversizedAscii(app.MAX_ENCRYPTED_PLAINTEXT_BYTES), "passphrase", { p2c: 1500 }),
+    /too large.*Multi-code splitting/
+  );
+  await rejectsWith(
+    () => app.encryptWebAuthnWrappedJwe(oversizedAscii(app.MAX_ENCRYPTED_PLAINTEXT_BYTES), zeroKey(), fixedWebAuthnHeader()),
+    /too large.*Multi-code splitting/
+  );
+  assert.throws(
+    () => app.encodePlainPayload(oversizedAscii(app.MAX_PLAIN_QR_CONTENT_BYTES)),
+    /too large.*Multi-code splitting/
+  );
+  assert.throws(
+    () => app.extractPayloadFromInput(oversizedAscii(app.MAX_RECOVERY_INPUT_BYTES)),
+    /too large.*Multi-code splitting/
+  );
+  assert.throws(
+    () => app.splitCompactJwe(oversizedAscii(app.MAX_COMPACT_JWE_CHARS)),
+    /too large.*Multi-code splitting/
+  );
+  assert.throws(
+    () => app.splitCompactJwe([
+      oversizedAscii(app.MAX_JWE_SEGMENT_CHARS),
+      "AA",
+      "AA",
+      "AA",
+      "AA"
+    ].join(".")),
+    /too large.*Multi-code splitting/
+  );
+  const oversizedHeader = app.base64UrlEncode(app.utf8Encode(JSON.stringify({
+    alg: "A256KW",
+    enc: "A256GCM",
+    app: "erk-webauthn-prf-v1",
+    extra: oversizedAscii(app.MAX_PROTECTED_HEADER_BYTES)
+  })));
+  assert.throws(
+    () => app.parseProtectedHeader(oversizedHeader),
+    /too large.*Multi-code splitting/
+  );
+  assert.throws(
+    () => app.buildQrContent(app.ENCRYPTED_PREFIX + oversizedAscii(app.MAX_QR_CONTENT_BYTES), {
+      href: "https://encrypt.tonysan.fun/"
+    }),
+    /too large.*Multi-code splitting/
+  );
+}
+
+async function testInboundP2cLimit() {
+  const compact = await app.encryptPassphraseJwe("secret string", "this is a long passphrase", { p2c: 1500 });
+  const parts = compact.split(".");
+  const header = app.parseProtectedHeader(parts[0]);
+  header.p2c = app.MAX_P2C + 1;
+  parts[0] = app.base64UrlEncode(app.utf8Encode(JSON.stringify(header)));
+  await rejectsWith(
+    () => app.decryptPassphraseJwe(parts.join("."), "this is a long passphrase"),
+    /iteration count/
+  );
+}
+
+async function testUnsupportedFixedIvOption() {
+  await rejectsWith(
+    () => app.encryptPassphraseJwe("secret string", "this is a long passphrase", {
+      p2c: 1500,
+      iv: new Uint8Array(12)
+    }),
+    /Unsupported encryption option/
+  );
+}
+
+async function testWebAuthnCryptoKeyValidation() {
+  const crypto = app.getCrypto();
+  const wrapKey = await crypto.subtle.importKey(
+    "raw",
+    zeroKey(),
+    { name: "AES-KW", length: 256 },
+    false,
+    ["wrapKey"]
+  );
+  const compact = await app.encryptWebAuthnWrappedJwe("passkey secret", wrapKey, fixedWebAuthnHeader());
+  assert.equal(await app.decryptWebAuthnWrappedJwe(compact, zeroKey()), "passkey secret");
+
+  const unwrapOnlyKey = await crypto.subtle.importKey(
+    "raw",
+    zeroKey(),
+    { name: "AES-KW", length: 256 },
+    false,
+    ["unwrapKey"]
+  );
+  await rejectsWith(
+    () => app.encryptWebAuthnWrappedJwe("passkey secret", unwrapOnlyKey, fixedWebAuthnHeader()),
+    /AES-KW secret key/
+  );
+
+  await rejectsWith(
+    () => app.decryptWebAuthnWrappedJwe(compact, wrapKey),
+    /AES-KW secret key/
+  );
+
+  const gcmKey = await crypto.subtle.importKey(
+    "raw",
+    zeroKey(),
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt"]
+  );
+  await rejectsWith(
+    () => app.encryptWebAuthnWrappedJwe("passkey secret", gcmKey, fixedWebAuthnHeader()),
+    /AES-KW secret key/
+  );
+
+  const shortKwKey = await crypto.subtle.importKey(
+    "raw",
+    new Uint8Array(16),
+    { name: "AES-KW", length: 128 },
+    false,
+    ["wrapKey"]
+  );
+  await rejectsWith(
+    () => app.encryptWebAuthnWrappedJwe("passkey secret", shortKwKey, fixedWebAuthnHeader()),
+    /AES-KW secret key/
+  );
 }
 
 async function testWebAuthnHeaderValidation() {
@@ -412,6 +541,9 @@ async function run() {
     testQrContentUsesPayloadForLocalFile,
     testInitialViewFromFragment,
     testPassphraseJweRoundtrip,
+    testDefensiveSizeLimits,
+    testInboundP2cLimit,
+    testUnsupportedFixedIvOption,
     testWebAuthnWrappedJweShape,
     testWebAuthnHeaderValidation,
     testWebAuthnCredentialDescriptorAllowsMobile,
@@ -419,6 +551,7 @@ async function run() {
     testDiscoverablePasskeyRequestReadsExistingCredential,
     testBoundPasskeyRequestUsesStoredCredentialId,
     testWebAuthnWrappedJweRoundtrip,
+    testWebAuthnCryptoKeyValidation,
     testWrongWebAuthnKek,
     testCorruptedWebAuthnCiphertext,
     testLegacyDirectWebAuthnPayloadRejection,
